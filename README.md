@@ -32,7 +32,3 @@ npm run dev      # http://localhost:5173
 npm run build    # production build
 npm run preview  # preview production build
 ```
-
-## Дизайн
-
-SpaceX-стиль: чисто чёрный/белый фон, шрифт D-DIN, ghost pill-кнопки (border-radius: 32px), монохромная палитра с hairlines, без теней и градиентов.
