@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
-import type { Task, Category, PomodoroSession } from '../types';
+import type { Task, Category, PomodoroSession, Workout } from '../types';
 
 interface Props {
   tasks: Task[];
   categories: Category[];
   pomodoroHistory: PomodoroSession[];
+  workouts: Workout[];
 }
 
-export default function SummaryTables({ tasks, categories, pomodoroHistory }: Props) {
+export default function SummaryTables({ tasks, categories, pomodoroHistory, workouts }: Props) {
   const [activeTable, setActiveTable] = useState('tasks');
 
   const taskStats = useMemo(() => {
@@ -39,9 +40,9 @@ export default function SummaryTables({ tasks, categories, pomodoroHistory }: Pr
       <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>СВОДНЫЕ ТАБЛИЦЫ</h2>
 
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', flexWrap: 'wrap', borderBottom: '1px solid var(--hairline)' }}>
-        {(['tasks','categories','pomodoro','difficulty'] as const).map(t => (
+        {(['tasks','categories','pomodoro','difficulty','workouts'] as const).map(t => (
           <button key={t} className={`tab-btn ${activeTable === t ? 'active' : ''}`} onClick={() => setActiveTable(t)}>
-            {t === 'tasks' ? 'ЗАДАЧИ' : t === 'categories' ? 'КАТЕГОРИИ' : t === 'pomodoro' ? 'ПОМОДОРО' : 'СЛОЖНОСТЬ'}
+            {t === 'tasks' ? 'ЗАДАЧИ' : t === 'categories' ? 'КАТЕГОРИИ' : t === 'pomodoro' ? 'ПОМОДОРО' : t === 'difficulty' ? 'СЛОЖНОСТЬ' : 'ТРЕНИРОВКИ'}
           </button>
         ))}
       </div>
@@ -165,6 +166,52 @@ export default function SummaryTables({ tasks, categories, pomodoroHistory }: Pr
                 <tr style={{ borderTop: '2px solid var(--hairline)' }}>
                   <td colSpan={2} style={{ fontWeight: 700 }}>ВСЕГО СЕССИЙ: {pomodoroHistory.length}</td>
                   <td style={{ fontWeight: 700 }}>+{pomodoroHistory.reduce((s, p) => s + p.xpEarned, 0)} XP</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+
+      {/* Workout history table */}
+      {activeTable === 'workouts' && (
+        <div className="card-panel" style={{ overflowX: 'auto' }}>
+          <h3 className="micro-cap" style={{ marginBottom: '16px' }}>ИСТОРИЯ ТРЕНИРОВОК</h3>
+          <table className="table-spacex">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Тип</th>
+                <th>Название</th>
+                <th>Длительность</th>
+                <th>Статус</th>
+                <th>XP заработано</th>
+              </tr>
+            </thead>
+            <tbody>
+              {workouts.length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Нет тренировок</td></tr>
+              ) : (
+                [...workouts].reverse().map(w => (
+                  <tr key={w.id}>
+                    <td>{new Date(w.date + 'T12:00:00').toLocaleDateString('ru')}</td>
+                    <td>{w.workoutType}</td>
+                    <td style={{ textDecoration: w.completed ? 'line-through' : 'none' }}>{w.title}</td>
+                    <td>{w.duration} мин</td>
+                    <td>{w.completed ? '✓ Выполнено' : 'Ожидает'}</td>
+                    <td>{w.completed ? `+${w.xp} XP` : '—'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {workouts.length > 0 && (
+              <tfoot>
+                <tr style={{ borderTop: '2px solid var(--hairline)' }}>
+                  <td colSpan={2} style={{ fontWeight: 700 }}>ВСЕГО ТРЕНИРОВОК: {workouts.length}</td>
+                  <td style={{ fontWeight: 700 }}>Выполнено: {workouts.filter(w => w.completed).length}</td>
+                  <td style={{ fontWeight: 700 }}>{workouts.filter(w => w.completed).reduce((s, w) => s + w.duration, 0)} мин</td>
+                  <td></td>
+                  <td style={{ fontWeight: 700 }}>+{workouts.filter(w => w.completed).reduce((s, w) => s + w.xp, 0)} XP</td>
                 </tr>
               </tfoot>
             )}

@@ -35,6 +35,19 @@ export interface AppData {
   categories: Category[];
   pomodoroHistory: PomodoroSession[];
   settings: AppSettings;
+  workouts: Workout[];
+}
+
+export interface Workout {
+  id: string;
+  date: string;
+  title: string;
+  workoutType: string;
+  duration: number;
+  notes: string;
+  completed: boolean;
+  xp: number;
+  createdAt: string;
 }
 
 export interface AppSettings {
