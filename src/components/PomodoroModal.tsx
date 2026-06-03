@@ -7,16 +7,22 @@ interface Props {
   onClose: () => void;
   onComplete: (xp: number) => void;
   onUpdateSettings: (s: Partial<AppSettings>) => void;
+  onSessionFinished?: (wasMinimized: boolean) => void;
+  restoreSignal?: number;
 }
 
-export default function PomodoroModal({ task, settings, onClose, onComplete, onUpdateSettings }: Props) {
+export default function PomodoroModal({ task, settings, onClose, onComplete, onUpdateSettings, onSessionFinished, restoreSignal }: Props) {
   const [timeLeft, setTimeLeft] = useState(settings.pomodoroWorkMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [customMin, setCustomMin] = useState(settings.pomodoroWorkMinutes);
   const [customXP, setCustomXP] = useState(settings.pomodoroBonusXP);
+  const [minimized, setMinimized] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const minimizedRef = useRef(minimized);
+  useEffect(() => { minimizedRef.current = minimized; }, [minimized]);
+  useEffect(() => { setMinimized(false); }, [restoreSignal]);
 
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
@@ -25,6 +31,7 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
     if (timeLeft === 0 && isRunning) {
       setIsRunning(false);
       setIsFinished(true);
+      onSessionFinished?.(minimizedRef.current);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning, timeLeft]);
@@ -39,6 +46,7 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
   const progress = 1 - timeLeft / (settings.pomodoroWorkMinutes * 60);
 
   const handleComplete = () => {
+    setMinimized(false);
     onComplete(settings.pomodoroBonusXP);
     setIsFinished(false);
     onClose();
@@ -48,12 +56,43 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
     onUpdateSettings({ pomodoroWorkMinutes: Math.max(1, Math.min(120, customMin)), pomodoroBonusXP: Math.max(1, Math.min(100, customXP)) });
   };
 
+  const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  // Minimized floating widget
+  if (minimized && !isFinished) {
+    return (
+      <div style={{
+        position: 'fixed', bottom: '20px', right: '20px', zIndex: 99,
+        background: 'var(--bg-secondary)', border: '1px solid var(--hairline)',
+        borderRadius: '32px', padding: '10px 18px',
+        display: 'flex', alignItems: 'center', gap: '12px',
+        cursor: 'pointer', animation: 'grow 0.3s ease-out',
+      }} onClick={() => setMinimized(false)}>
+        <span style={{ fontSize: '14px' }}>🍅</span>
+        <span style={{
+          fontSize: '20px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif',
+          fontWeight: 700, letterSpacing: '1px', color: 'var(--text-primary)',
+        }}>{timeDisplay}</span>
+        <span style={{
+          fontSize: '12px', color: 'var(--text-muted)', maxWidth: '120px',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{task.title}</span>
+        <button className="btn-ghost btn-ghost-xs"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          title="Завершить">✕</button>
+      </div>
+    );
+  }
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => { if (isRunning && !isFinished) { setMinimized(true); } else { onClose(); } }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', minWidth: '380px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h3 className="micro-cap" style={{ margin: 0 }}>🍅 ПОМОДОРО</h3>
-          <button className="btn-ghost btn-ghost-xs" onClick={onClose}>✕</button>
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <button className="btn-ghost btn-ghost-xs" onClick={() => setMinimized(true)} title="Свернуть">_</button>
+            <button className="btn-ghost btn-ghost-xs" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         <p style={{ fontSize: '14px', color: 'var(--text-soft)', marginBottom: '8px' }}>{task.title}</p>

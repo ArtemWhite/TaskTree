@@ -92,6 +92,8 @@ export default function App() {
   const prevLevelRef = useRef(getStoredLevel());
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [pomodoroCompleteToast, setPomodoroCompleteToast] = useState<{ taskId: string; taskTitle: string; xp: number } | null>(null);
+  const [pomodoroRestoreSignal, setPomodoroRestoreSignal] = useState(0);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -399,9 +401,15 @@ export default function App() {
         <PomodoroModal
           task={pomodoroTask}
           settings={data.settings}
-          onClose={() => setPomodoroTask(null)}
-          onComplete={(xp) => { addPomodoroSession(pomodoroTask.id, pomodoroTask.title, xp); setPomodoroTask(null); }}
+          onClose={() => { setPomodoroTask(null); setPomodoroCompleteToast(null); }}
+          onComplete={(xp) => { addPomodoroSession(pomodoroTask.id, pomodoroTask.title, xp); setPomodoroTask(null); setPomodoroCompleteToast(null); }}
           onUpdateSettings={updateSettings}
+          onSessionFinished={(wasMinimized: boolean) => {
+            if (wasMinimized) {
+              setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp: data.settings.pomodoroBonusXP });
+            }
+          }}
+          restoreSignal={pomodoroRestoreSignal}
         />
       )}
 
@@ -439,6 +447,40 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Pomodoro completion toast — persistent, no auto-dismiss */}
+      {pomodoroCompleteToast && (
+        <div style={{
+          position: 'fixed', bottom: '120px', right: '24px', zIndex: 101,
+          background: 'var(--bg-secondary)', border: '1px solid var(--hairline)',
+          borderRadius: '12px', padding: '16px 20px', maxWidth: '320px',
+          cursor: 'pointer', animation: 'grow 0.4s ease-out',
+        }} onClick={() => {
+          if (!pomodoroTask) {
+            const t = data.tasks.find(t => t.id === pomodoroCompleteToast.taskId);
+            if (t) setPomodoroTask(t);
+          }
+          setPomodoroRestoreSignal(s => s + 1);
+          setPomodoroCompleteToast(null);
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+            <div>
+              <p style={{ fontSize: '13px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '4px' }}>
+                🍅 СЕССИЯ ЗАВЕРШЕНА!
+              </p>
+              <p style={{ fontSize: '12px', color: 'var(--text-soft)', margin: 0 }}>
+                {pomodoroCompleteToast.taskTitle}
+              </p>
+              <p style={{ fontSize: '11px', color: '#5aaa6f', marginTop: '4px', marginBottom: 0 }}>
+                +{pomodoroCompleteToast.xp} XP
+              </p>
+            </div>
+            <button className="btn-ghost btn-ghost-xs" style={{ flexShrink: 0 }}
+              onClick={(e) => { e.stopPropagation(); setPomodoroCompleteToast(null); }}
+              title="Закрыть">✕</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -76,7 +76,20 @@ function pseudoRandom(seed: number): number {
 
 export default function ProgressSection({ totalXP, treeStage, levelInfo, activeCount, completedCount, pomodoroSessions, large, zoom = 1, sideLayout, treeSize }: Props) {
   const size = treeSize || (large ? 280 : 160);
-  const fractionalStage = treeStage + (levelInfo.next > 0 ? Math.min(1, levelInfo.current / levelInfo.next) : 0);
+  const [viewStage, setViewStage] = useState<number | null>(null);
+  const prevTreeStageRef = useRef(treeStage);
+  const displayStage = viewStage ?? treeStage;
+  const isViewingPastStage = viewStage !== null && viewStage < treeStage;
+
+  useEffect(() => {
+    if (treeStage > prevTreeStageRef.current) setViewStage(null);
+    prevTreeStageRef.current = treeStage;
+  }, [treeStage]);
+
+  const actualFractionalStage = treeStage + (levelInfo.next > 0 ? Math.min(1, levelInfo.current / levelInfo.next) : 0);
+  const viewFractionalStage = isViewingPastStage
+    ? Math.min(displayStage + 0.95, 49)
+    : actualFractionalStage;
 
   if (sideLayout) {
     return (
@@ -84,12 +97,38 @@ export default function ProgressSection({ totalXP, treeStage, levelInfo, activeC
         {/* Info panel — left side */}
         <div style={{ flex: '0 0 340px', minWidth: '280px' }}>
           <p className="micro-cap" style={{ marginBottom: '8px' }}>ДЕРЕВО ПРОГРЕССА</p>
-          <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, letterSpacing: '0.96px', textTransform: 'uppercase', marginBottom: '4px' }}>
-            {STAGE_NAMES[treeStage] ?? STAGE_NAMES[0]}
+          <div style={{ position: 'relative', marginBottom: '4px', minHeight: '72px' }}>
+            <button
+              className="btn-ghost btn-ghost-xs"
+              onClick={() => { const prev = displayStage - 1; setViewStage(prev <= 0 ? 0 : prev); }}
+              disabled={displayStage <= 0}
+              style={{ position: 'absolute', left: 0, top: 4 }}
+              title="Предыдущая стадия"
+            >◀</button>
+            <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, letterSpacing: '0.96px', textTransform: 'uppercase', lineHeight: '1.25', textAlign: 'center', padding: '0 52px' }}>
+              {STAGE_NAMES[displayStage] ?? STAGE_NAMES[0]}
+            </div>
+            <button
+              className="btn-ghost btn-ghost-xs"
+              onClick={() => setViewStage(displayStage + 1)}
+              disabled={displayStage >= treeStage}
+              style={{ position: 'absolute', right: 0, top: 4 }}
+              title="Следующая стадия"
+            >▶</button>
           </div>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-            Стадия {treeStage + 1}/50 &middot; Уровень {levelInfo.level} &middot; {totalXP} XP
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px', minHeight: '20px' }}>
+            {isViewingPastStage ? (
+              <><span style={{ color: 'var(--text-soft)' }}>ПРОСМОТР</span> · Стадия {displayStage + 1}/50</>
+            ) : (
+              <>Стадия {treeStage + 1}/50</>
+            )}
+            {' · '}Уровень {levelInfo.level} · {totalXP} XP
           </p>
+          <button
+            className="btn-ghost btn-ghost-xs"
+            onClick={() => setViewStage(null)}
+            style={{ marginBottom: '16px', visibility: isViewingPastStage ? 'visible' : 'hidden' }}
+          >↩ К ТЕКУЩЕЙ</button>
           <div style={{ width: '100%', maxWidth: '300px' }}>
             <div className="progress-bar" style={{ height: '4px' }}>
               <div className="progress-bar-fill" style={{ width: `${levelInfo.next > 0 ? (levelInfo.current / levelInfo.next) * 100 : 100}%`, height: '100%' }} />
@@ -108,7 +147,7 @@ export default function ProgressSection({ totalXP, treeStage, levelInfo, activeC
 
         {/* Tree frame — right side */}
         <div style={{ flex: '1 1 400px', minWidth: '340px' }}>
-          <TreeFrame fractionalStage={fractionalStage} size={size} initialZoom={zoom} />
+          <TreeFrame fractionalStage={viewFractionalStage} size={size} initialZoom={zoom} />
         </div>
       </div>
     );
@@ -118,17 +157,43 @@ export default function ProgressSection({ totalXP, treeStage, levelInfo, activeC
   return (
     <div style={{ display: 'flex', flexDirection: large ? 'column' : 'row', alignItems: 'center', gap: large ? '24px' : '32px', flexWrap: 'wrap', justifyContent: 'center' }}>
       <div className="animate-grow" style={{ width: size, height: size, position: 'relative' }}>
-        <TreeCanvas fractionalStage={fractionalStage} size={size} zoom={zoom} />
+        <TreeCanvas fractionalStage={viewFractionalStage} size={size} zoom={zoom} />
       </div>
 
       <div style={{ textAlign: large ? 'center' : 'left' }}>
         {large && <p className="micro-cap" style={{ marginBottom: '8px' }}>ДЕРЕВО ПРОГРЕССА</p>}
-        <div style={{ fontSize: large ? '28px' : '20px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, letterSpacing: '0.96px', textTransform: 'uppercase', marginBottom: '4px' }}>
-          {STAGE_NAMES[treeStage] ?? STAGE_NAMES[0]}
+        <div style={{ position: 'relative', marginBottom: '4px', minHeight: large ? '72px' : '50px', minWidth: large ? '340px' : '220px' }}>
+          <button
+            className="btn-ghost btn-ghost-xs"
+            onClick={() => { const prev = displayStage - 1; setViewStage(prev <= 0 ? 0 : prev); }}
+            disabled={displayStage <= 0}
+            style={{ position: 'absolute', left: 0, top: large ? 4 : 2 }}
+            title="Предыдущая стадия"
+          >◀</button>
+          <div style={{ fontSize: large ? '28px' : '20px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, letterSpacing: '0.96px', textTransform: 'uppercase', lineHeight: '1.25', textAlign: 'center', padding: large ? '0 52px' : '0 42px' }}>
+            {STAGE_NAMES[displayStage] ?? STAGE_NAMES[0]}
+          </div>
+          <button
+            className="btn-ghost btn-ghost-xs"
+            onClick={() => setViewStage(displayStage + 1)}
+            disabled={displayStage >= treeStage}
+            style={{ position: 'absolute', right: 0, top: large ? 4 : 2 }}
+            title="Следующая стадия"
+          >▶</button>
         </div>
-        <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: large ? '16px' : '8px' }}>
-          Стадия {treeStage + 1}/50 &middot; Уровень {levelInfo.level} &middot; {totalXP} XP
+        <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: large ? '16px' : '8px', minHeight: '20px' }}>
+          {isViewingPastStage ? (
+            <><span style={{ color: 'var(--text-soft)' }}>ПРОСМОТР</span> · Стадия {displayStage + 1}/50</>
+          ) : (
+            <>Стадия {treeStage + 1}/50</>
+          )}
+          {' · '}Уровень {levelInfo.level} · {totalXP} XP
         </p>
+        <button
+          className="btn-ghost btn-ghost-xs"
+          onClick={() => setViewStage(null)}
+          style={{ marginBottom: '16px', visibility: isViewingPastStage ? 'visible' : 'hidden' }}
+        >↩ К ТЕКУЩЕЙ</button>
         <div style={{ width: large ? '280px' : '180px' }}>
           <div className="progress-bar" style={{ height: large ? '4px' : '3px' }}>
             <div className="progress-bar-fill" style={{ width: `${levelInfo.next > 0 ? (levelInfo.current / levelInfo.next) * 100 : 100}%`, height: '100%' }} />
