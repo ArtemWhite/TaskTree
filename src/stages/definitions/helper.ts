@@ -2,7 +2,7 @@ import type { StageConfig } from '../types';
 
 function mk(s: number, overrides: Partial<StageConfig> & { description: string }): StageConfig {
   const ratio = s / 49;
-  const z = 0.50 + ratio * 0.75;
+  const z = 1.20 - ratio * 0.40;
   const hasRoots = s >= 30;
   const hasBranches = s >= 8;
   const hasHighlights = s >= 12;
@@ -24,7 +24,7 @@ function mk(s: number, overrides: Partial<StageConfig> & { description: string }
 
     /* Layout */
     viewZoom: z,
-    groundY: 0.88 + ratio * 0.06,
+    groundY: 0.458 + ratio * 0.642,
 
     /* Trunk */
     trunkHeight: s === 0 ? 0 : g(0.025 + ratio * 0.32),

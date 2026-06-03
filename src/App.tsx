@@ -88,8 +88,10 @@ export default function App() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme);
   const [levelUpToast, setLevelUpToast] = useState<{ level: number; stage: number } | null>(null);
+  const [toastProgress, setToastProgress] = useState(100);
   const prevLevelRef = useRef(getStoredLevel());
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -113,14 +115,26 @@ export default function App() {
     if (levelInfo.level > prevLevelRef.current && prevLevelRef.current > 0) {
       const stage = getTreeStage(levelInfo.level);
       setLevelUpToast({ level: levelInfo.level, stage });
+      setToastProgress(100);
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (toastProgressRef.current) clearInterval(toastProgressRef.current);
       toastTimerRef.current = setTimeout(() => setLevelUpToast(null), 10000);
+      const startTime = Date.now();
+      toastProgressRef.current = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const pct = Math.max(0, 100 - (elapsed / 10000) * 100);
+        setToastProgress(pct);
+        if (pct <= 0) { if (toastProgressRef.current) clearInterval(toastProgressRef.current); }
+      }, 80);
     }
     prevLevelRef.current = levelInfo.level;
   }, [levelInfo.level]);
 
   useEffect(() => {
-    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (toastProgressRef.current) clearInterval(toastProgressRef.current);
+    };
   }, []);
 
   const addTask = useCallback((task: Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'>) => {
@@ -415,6 +429,13 @@ export default function App() {
             <button className="btn-ghost btn-ghost-xs" style={{ flexShrink: 0 }}
               onClick={(e) => { e.stopPropagation(); setLevelUpToast(null); }}
               title="Закрыть">✕</button>
+          </div>
+          {/* Progress bar */}
+          <div style={{ marginTop: '10px', height: '3px', background: 'var(--progress-bar-bg)', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', background: '#5aaa6f', borderRadius: '2px',
+              width: `${toastProgress}%`, transition: 'width 0.08s linear'
+            }} />
           </div>
         </div>
       )}

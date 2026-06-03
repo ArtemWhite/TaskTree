@@ -367,11 +367,11 @@ function drawTree(ctx: CanvasRenderingContext2D, fractionalStage: number, size: 
   // ── Seed (stage ~0) ──
   if (cfg.trunkHeight <= 0) {
     ctx.beginPath();
-    ctx.arc(L.cx, L.groundY - 2, size * 0.018, 0, Math.PI * 2);
+    ctx.arc(L.cx, L.groundY - 2, size * 0.04, 0, Math.PI * 2);
     ctx.fillStyle = cfg.trunkColor;
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(L.cx, L.groundY + 2, size * 0.1, size * 0.016, 0, 0, Math.PI * 2);
+    ctx.ellipse(L.cx, L.groundY + 2, size * 0.14, size * 0.022, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(40,25,15,0.5)';
     ctx.fill();
     return;
