@@ -50,14 +50,33 @@ export default function TaskSection({
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'deadline' | 'title' | 'createdAt+deadline'>('createdAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const filteredTasks = useMemo(() => {
     let list = subtab === 'active' ? tasks : completedTasks;
     if (filterCategory !== 'all') list = list.filter(t => t.categoryId === filterCategory);
     if (filterDifficulty !== 'all') list = list.filter(t => t.difficulty === filterDifficulty);
     if (searchTerm) list = list.filter(t => t.title.toLowerCase().includes(searchTerm.toLowerCase()));
-    return list;
-  }, [tasks, completedTasks, filterCategory, filterDifficulty, searchTerm, subtab]);
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => {
+      if (sortBy === 'title') return dir * a.title.localeCompare(b.title, 'ru');
+      if (sortBy === 'deadline') {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return dir * a.deadline.localeCompare(b.deadline);
+      }
+      if (sortBy === 'createdAt+deadline') {
+        const aDL = a.deadline || '9999-99-99';
+        const bDL = b.deadline || '9999-99-99';
+        const dlCmp = dir * aDL.localeCompare(bDL);
+        if (dlCmp !== 0) return dlCmp;
+        return dir * a.createdAt.localeCompare(b.createdAt);
+      }
+      return dir * a.createdAt.localeCompare(b.createdAt);
+    });
+  }, [tasks, completedTasks, filterCategory, filterDifficulty, searchTerm, subtab, sortBy, sortDir]);
 
   const resetForm = () => {
     setTitle('');
@@ -221,6 +240,17 @@ export default function TaskSection({
               <option value="medium">Средняя</option>
               <option value="hard">Сложная</option>
             </select>
+            <select className="input-spacex" style={{ width: 'auto' }} value={sortBy}
+              onChange={e => setSortBy(e.target.value as typeof sortBy)}>
+              <option value="createdAt">По созданию</option>
+              <option value="deadline">По дедлайну</option>
+              <option value="title">По названию</option>
+              <option value="createdAt+deadline">По дедлайну и дате</option>
+            </select>
+            <button className="btn-ghost btn-ghost-xs" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+              title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}>
+              {sortDir === 'asc' ? '↑' : '↓'}
+            </button>
             {subtab === 'active' && (
               <button className="btn-ghost" onClick={() => { resetForm(); setShowForm(true); }}>
                 + ДОБАВИТЬ
