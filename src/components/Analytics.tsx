@@ -42,8 +42,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
 
   // Data: category distribution
   const categoryData = useMemo(() => {
-    const map: Record<string, { name: string; emoji: string; value: number; xp: number }> = {};
-    categories.forEach(c => { map[c.id] = { name: c.name, emoji: c.emoji, value: 0, xp: 0 }; });
+    const map: Record<string, { name: string; emoji: string; color: string; value: number; xp: number }> = {};
+    categories.forEach(c => { map[c.id] = { name: c.name, emoji: c.emoji, color: c.color, value: 0, xp: 0 }; });
     tasks.filter(t => t.completed).forEach(t => {
       if (map[t.categoryId]) { map[t.categoryId].value++; map[t.categoryId].xp += t.xp; }
     });
@@ -187,8 +187,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
               <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} label={({ name, value, payload }: { name?: string; value?: number; payload?: Record<string, unknown> }) => `${(payload as Record<string, string>).emoji || ''} ${name || ''} (${value || 0})`}>
-                    {categoryData.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#000000" strokeWidth={2} />
+                    {categoryData.map((d, i) => (
+                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="#000000" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip

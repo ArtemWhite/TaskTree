@@ -368,10 +368,17 @@ export default function TaskSection({
                             <span className="badge">🍅 ×{task.pomodoroCount}</span>
                           )}
                           {task.deadline && (
-                            <span className="badge" style={{
-                              borderColor: new Date(task.deadline) < new Date() ? '#ff6b6b' : '#5aaa6f',
-                              color: new Date(task.deadline) < new Date() ? '#ff6b6b' : '#5aaa6f'
-                            }}>
+                            <span className="badge" style={(() => {
+                              const deadlineDate = new Date(task.deadline);
+                              const now = new Date();
+                              if (task.completed && task.completedDate) {
+                                const completedDate = new Date(task.completedDate);
+                                const onTime = completedDate <= deadlineDate;
+                                return { borderColor: onTime ? '#5aaa6f' : '#ff6b6b', color: onTime ? '#5aaa6f' : '#ff6b6b' };
+                              }
+                              const overdue = deadlineDate < now;
+                              return { borderColor: overdue ? '#ff6b6b' : '#5aaa6f', color: overdue ? '#ff6b6b' : '#5aaa6f' };
+                            })()}>
                               ⏰ {new Date(task.deadline).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
                               {task.deadline.includes('T') && task.deadline.slice(11, 16) !== '23:59' ? ` ${task.deadline.slice(11, 16)}` : ''}
                             </span>

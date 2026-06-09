@@ -403,9 +403,11 @@ export default function App() {
           settings={data.settings}
           onClose={() => { setPomodoroTask(null); setPomodoroCompleteToast(null); }}
           onComplete={(xp) => { addPomodoroSession(pomodoroTask.id, pomodoroTask.title, xp); setPomodoroTask(null); setPomodoroCompleteToast(null); }}
+          onRecordSession={(xp) => { addPomodoroSession(pomodoroTask.id, pomodoroTask.title, xp); }}
           onUpdateSettings={updateSettings}
           onSessionFinished={(wasMinimized: boolean) => {
             if (wasMinimized) {
+              addPomodoroSession(pomodoroTask.id, pomodoroTask.title, data.settings.pomodoroBonusXP);
               setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp: data.settings.pomodoroBonusXP });
             }
           }}

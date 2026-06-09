@@ -8,11 +8,15 @@ interface Props {
   onComplete: (xp: number) => void;
   onUpdateSettings: (s: Partial<AppSettings>) => void;
   onSessionFinished?: (wasMinimized: boolean) => void;
+  onRecordSession?: (xp: number) => void;
   restoreSignal?: number;
 }
 
-export default function PomodoroModal({ task, settings, onClose, onComplete, onUpdateSettings, onSessionFinished, restoreSignal }: Props) {
-  const [timeLeft, setTimeLeft] = useState(settings.pomodoroWorkMinutes * 60);
+export default function PomodoroModal({ task, settings, onClose, onComplete, onUpdateSettings, onSessionFinished, onRecordSession, restoreSignal }: Props) {
+  const totalSeconds = settings.pomodoroWorkMinutes * 60;
+  const [endTime, setEndTime] = useState<number | null>(null);
+  const [pausedRemaining, setPausedRemaining] = useState(totalSeconds);
+  const [timeLeft, setTimeLeft] = useState(totalSeconds);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -21,25 +25,63 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
   const [minimized, setMinimized] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const minimizedRef = useRef(minimized);
+  const finishedRef = useRef(false);
   useEffect(() => { minimizedRef.current = minimized; }, [minimized]);
   useEffect(() => { setMinimized(false); }, [restoreSignal]);
 
+  // Timestamp-based timer — immune to browser throttling
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
-      intervalRef.current = setInterval(() => setTimeLeft(t => t - 1), 1000);
+    if (!isRunning) {
+      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      return;
     }
-    if (timeLeft === 0 && isRunning) {
-      setIsRunning(false);
-      setIsFinished(true);
-      onSessionFinished?.(minimizedRef.current);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isRunning, timeLeft]);
+    intervalRef.current = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.round(((endTime ?? now) - now) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0 && !finishedRef.current) {
+        finishedRef.current = true;
+        setIsRunning(false);
+        setIsFinished(true);
+        onSessionFinished?.(minimizedRef.current);
+        if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+      }
+    }, 250);
+    return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
+  }, [isRunning, endTime]);
+
+  const isRunningRef = useRef(isRunning);
+  useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
 
   useEffect(() => {
-    setTimeLeft(settings.pomodoroWorkMinutes * 60);
     setCustomMin(settings.pomodoroWorkMinutes);
+    if (isRunningRef.current) return; // не трогаем таймер, если запущен
+    setPausedRemaining(settings.pomodoroWorkMinutes * 60);
+    setTimeLeft(settings.pomodoroWorkMinutes * 60);
+    setEndTime(null);
+    finishedRef.current = false;
   }, [settings.pomodoroWorkMinutes]);
+
+  const startTimer = () => {
+    finishedRef.current = false;
+    setEndTime(Date.now() + pausedRemaining * 1000);
+    setIsRunning(true);
+  };
+
+  const pauseTimer = () => {
+    setIsRunning(false);
+    setPausedRemaining(timeLeft);
+    setEndTime(null);
+  };
+
+  const resetTimer = () => {
+    setIsRunning(false);
+    setIsFinished(false);
+    finishedRef.current = false;
+    setPausedRemaining(settings.pomodoroWorkMinutes * 60);
+    setTimeLeft(settings.pomodoroWorkMinutes * 60);
+    setEndTime(null);
+  };
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -49,6 +91,7 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
     setMinimized(false);
     onComplete(settings.pomodoroBonusXP);
     setIsFinished(false);
+    finishedRef.current = false;
     onClose();
   };
 
@@ -125,7 +168,7 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
           {[25, 15, 5].map(m => (
             <button key={m} className="btn-ghost btn-ghost-xs"
               style={{ background: settings.pomodoroWorkMinutes === m ? 'var(--ghost-hover)' : 'transparent' }}
-              onClick={() => { onUpdateSettings({ pomodoroWorkMinutes: m }); setTimeLeft(m * 60); setIsRunning(false); }}>
+              onClick={() => { onUpdateSettings({ pomodoroWorkMinutes: m }); resetTimer(); }}>
               {m} МИН
             </button>
           ))}
@@ -177,13 +220,13 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
         {!isFinished ? (
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             {!isRunning ? (
-              <button className="btn-ghost" onClick={() => setIsRunning(true)} disabled={timeLeft === 0}>
+              <button className="btn-ghost" onClick={startTimer} disabled={timeLeft === 0}>
                 {timeLeft === settings.pomodoroWorkMinutes * 60 ? 'СТАРТ' : 'ПРОДОЛЖИТЬ'}
               </button>
             ) : (
-              <button className="btn-ghost" onClick={() => setIsRunning(false)}>ПАУЗА</button>
+              <button className="btn-ghost" onClick={pauseTimer}>ПАУЗА</button>
             )}
-            <button className="btn-ghost" onClick={() => { setTimeLeft(settings.pomodoroWorkMinutes * 60); setIsRunning(false); }}>
+            <button className="btn-ghost" onClick={resetTimer}>
               СБРОС
             </button>
           </div>
@@ -198,7 +241,7 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button className="btn-ghost" onClick={handleComplete}>ЗАБРАТЬ XP</button>
-              <button className="btn-ghost btn-ghost-sm" onClick={() => { setTimeLeft(settings.pomodoroWorkMinutes * 60); setIsFinished(false); setIsRunning(true); }}>
+              <button className="btn-ghost btn-ghost-sm" onClick={() => { onRecordSession?.(settings.pomodoroBonusXP); resetTimer(); startTimer(); }}>
                 ЕЩЁ СЕССИЯ
               </button>
             </div>
