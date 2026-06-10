@@ -11,6 +11,7 @@ import Analytics from './components/Analytics';
 import DataIO from './components/DataIO';
 import SummaryTables from './components/SummaryTables';
 import SportsSection from './components/SportsSection';
+import WorkoutCalendar from './components/WorkoutCalendar';
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-1', name: 'Работа', emoji: '🧠', color: '#ffffff' },
@@ -311,11 +312,10 @@ export default function App() {
       <section style={{ textAlign: 'center', padding: '64px 24px 48px', borderBottom: '1px solid var(--hairline)', position: 'relative', overflow: 'hidden' }}>
         <div className="starfield" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
         <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <p className="micro-cap" style={{ marginBottom: '16px' }}>ПЕРСОНАЛЬНЫЙ ТРЕКЕР ПРОДУКТИВНОСТИ</p>
-          <h1 className="section-heading" style={{ marginBottom: '16px' }}>ДОСТИГАЙ БОЛЬШЕГО<br />С ГЕЙМИФИКАЦИЕЙ</h1>
+          <p className="micro-cap" style={{ marginBottom: '16px' }}>ТРЕКЕР ЗАДАЧ И ПРИВЫЧЕК</p>
+          <h1 className="section-heading" style={{ marginBottom: '16px' }}>ПЛАНИРУЙ И ОТСЛЕЖИВАЙ<br />СВОИ РЕЗУЛЬТАТЫ</h1>
           <p style={{ color: 'var(--text-soft)', fontSize: '16px', letterSpacing: '0.32px', maxWidth: '600px', margin: '0 auto 32px' }}>
-            Отслеживай привычки, выполняй задачи, расти дерево прогресса и соревнуйся с собой.
-            Каждое действие приносит опыт — преврати продуктивность в игру.
+            Задачи, спорт и помодоро-таймер в одном месте. Выполняй цели, зарабатывай опыт и следи за прогрессом.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="btn-ghost" onClick={() => setActiveTab('tasks')}>ДОБАВИТЬ ЗАДАЧУ</button>
@@ -361,6 +361,7 @@ export default function App() {
           <section>
             <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>КАЛЕНДАРЬ</h2>
             <CalendarHeatmap completedDays={completedDays} />
+            <WorkoutCalendar workouts={data.workouts || []} />
             <SportsSection
               workouts={data.workouts || []}
               onAdd={addWorkout}
@@ -393,7 +394,7 @@ export default function App() {
       {/* FOOTER */}
       <footer style={{ borderTop: '1px solid var(--hairline)', padding: '32px 24px', textAlign: 'center' }}>
         <p style={{ fontSize: '13px', letterSpacing: '0.32px', color: 'var(--text-muted)' }}>
-          TASKTRACKER — ПЕРСОНАЛЬНЫЙ ТРЕКЕР ЗАДАЧ С ГЕЙМИФИКАЦИЕЙ
+          TASKTRACKER — ТРЕКЕР ЗАДАЧ И ПРИВЫЧЕК
         </p>
       </footer>
 
@@ -402,13 +403,11 @@ export default function App() {
           task={pomodoroTask}
           settings={data.settings}
           onClose={() => { setPomodoroTask(null); setPomodoroCompleteToast(null); }}
-          onComplete={(xp) => { addPomodoroSession(pomodoroTask.id, pomodoroTask.title, xp); setPomodoroTask(null); setPomodoroCompleteToast(null); }}
-          onRecordSession={(xp) => { addPomodoroSession(pomodoroTask.id, pomodoroTask.title, xp); }}
           onUpdateSettings={updateSettings}
-          onSessionFinished={(wasMinimized: boolean) => {
+          onSessionFinished={(wasMinimized: boolean, xp: number) => {
+            addPomodoroSession(pomodoroTask.id, pomodoroTask.title, xp);
             if (wasMinimized) {
-              addPomodoroSession(pomodoroTask.id, pomodoroTask.title, data.settings.pomodoroBonusXP);
-              setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp: data.settings.pomodoroBonusXP });
+              setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp });
             }
           }}
           restoreSignal={pomodoroRestoreSignal}

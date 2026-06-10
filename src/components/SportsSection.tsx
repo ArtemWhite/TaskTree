@@ -48,9 +48,12 @@ export default function SportsSection({ workouts, onAdd, onUpdate, onDelete, onC
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [customType, setCustomType] = useState('');
   const [savedCustomTypes, setSavedCustomTypes] = useState<string[]>(loadCustomTypes);
+  const [subtab, setSubtab] = useState<'workouts' | 'categories'>('workouts');
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [editingTypeName, setEditingTypeName] = useState('');
   const [editingTypeValue, setEditingTypeValue] = useState('');
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeIcon, setNewTypeIcon] = useState('⭐');
 
   const allWorkoutTypes = useMemo(() => {
     const custom = savedCustomTypes.filter(t => !WORKOUT_TYPES.some(wt => wt.name === t));
@@ -189,6 +192,71 @@ export default function SportsSection({ workouts, onAdd, onUpdate, onDelete, onC
         </div>
       </div>
 
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
+        {(['workouts','categories'] as const).map(t => (
+          <button key={t} className={`tab-btn ${subtab === t ? 'active' : ''}`} onClick={() => setSubtab(t)}>
+            {t === 'workouts' ? 'ТРЕНИРОВКИ' : 'КАТЕГОРИИ'}
+          </button>
+        ))}
+      </div>
+
+      {subtab === 'categories' && (
+        <div className="card-panel" style={{ marginBottom: '32px' }}>
+          <h4 className="micro-cap" style={{ marginBottom: '20px' }}>УПРАВЛЕНИЕ КАТЕГОРИЯМИ ТРЕНИРОВОК</h4>
+
+          {/* Add new type */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label className="micro-cap" style={{ display: 'block', marginBottom: '4px', fontSize: '10px' }}>Иконка</label>
+              <input className="input-spacex" style={{ width: '60px', textAlign: 'center', fontSize: '20px' }}
+                value={newTypeIcon} onChange={e => setNewTypeIcon(e.target.value || '⭐')} maxLength={2} />
+            </div>
+            <div style={{ flex: '1 1 150px' }}>
+              <label className="micro-cap" style={{ display: 'block', marginBottom: '4px', fontSize: '10px' }}>Название</label>
+              <input className="input-spacex" value={newTypeName} onChange={e => setNewTypeName(e.target.value)}
+                placeholder="Новая категория тренировок" />
+            </div>
+            <button className="btn-ghost btn-ghost-sm" onClick={() => {
+              const trimmed = newTypeName.trim();
+              if (!trimmed) return;
+              if (!savedCustomTypes.includes(trimmed)) {
+                const updated = [...savedCustomTypes, trimmed];
+                setSavedCustomTypes(updated);
+                saveCustomTypes(updated);
+              }
+              setNewTypeName('');
+              setNewTypeIcon('⭐');
+            }}>ДОБАВИТЬ</button>
+          </div>
+
+          {/* Type list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {allWorkoutTypes.map(type => {
+              const isBuiltIn = WORKOUT_TYPES.some(wt => wt.name === type.name);
+              const typeWorkouts = workouts.filter(w => w.workoutType === type.name);
+              return (
+                <div key={type.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--surface-hover)', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '24px' }}>{type.icon}</span>
+                  <span style={{ flex: 1, fontSize: '14px' }}>{type.name}</span>
+                  <span className="badge" style={{ borderColor: '#3b82c4', color: '#3b82c4' }}>
+                    {typeWorkouts.length} тренировок
+                  </span>
+                  {isBuiltIn ? (
+                    <span className="badge" style={{ borderColor: 'var(--hairline)', color: 'var(--text-muted)', fontSize: '10px' }}>ВСТРОЕННАЯ</span>
+                  ) : (
+                    <button className="btn-ghost btn-ghost-xs" onClick={() => handleDeleteCustomType(type.name)}
+                      style={{ color: '#ff6b6b', borderColor: '#ff6b6b' }}>УДАЛИТЬ</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {subtab === 'workouts' && (
+      <>
       {/* Add/Edit Form */}
       <div className="card-panel" style={{ marginBottom: '32px' }}>
         <h4 className="micro-cap" style={{ marginBottom: '16px' }}>
@@ -429,6 +497,8 @@ export default function SportsSection({ workouts, onAdd, onUpdate, onDelete, onC
           </div>
         </div>
       ))}
+      </>
+      )}
     </div>
   );
 }

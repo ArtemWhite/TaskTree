@@ -5,14 +5,12 @@ interface Props {
   task: Task;
   settings: AppSettings;
   onClose: () => void;
-  onComplete: (xp: number) => void;
   onUpdateSettings: (s: Partial<AppSettings>) => void;
-  onSessionFinished?: (wasMinimized: boolean) => void;
-  onRecordSession?: (xp: number) => void;
+  onSessionFinished: (wasMinimized: boolean, xp: number) => void;
   restoreSignal?: number;
 }
 
-export default function PomodoroModal({ task, settings, onClose, onComplete, onUpdateSettings, onSessionFinished, onRecordSession, restoreSignal }: Props) {
+export default function PomodoroModal({ task, settings, onClose, onUpdateSettings, onSessionFinished, restoreSignal }: Props) {
   const totalSeconds = settings.pomodoroWorkMinutes * 60;
   const [endTime, setEndTime] = useState<number | null>(null);
   const [pausedRemaining, setPausedRemaining] = useState(totalSeconds);
@@ -43,7 +41,7 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
         finishedRef.current = true;
         setIsRunning(false);
         setIsFinished(true);
-        onSessionFinished?.(minimizedRef.current);
+        onSessionFinished(minimizedRef.current, settings.pomodoroBonusXP);
         if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       }
     }, 250);
@@ -87,9 +85,8 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
   const seconds = timeLeft % 60;
   const progress = 1 - timeLeft / (settings.pomodoroWorkMinutes * 60);
 
-  const handleComplete = () => {
+  const handleClose = () => {
     setMinimized(false);
-    onComplete(settings.pomodoroBonusXP);
     setIsFinished(false);
     finishedRef.current = false;
     onClose();
@@ -240,8 +237,8 @@ export default function PomodoroModal({ task, settings, onClose, onComplete, onU
               <br />+{settings.pomodoroBonusXP} бонусного XP!
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button className="btn-ghost" onClick={handleComplete}>ЗАБРАТЬ XP</button>
-              <button className="btn-ghost btn-ghost-sm" onClick={() => { onRecordSession?.(settings.pomodoroBonusXP); resetTimer(); startTimer(); }}>
+              <button className="btn-ghost" onClick={handleClose}>ЗАБРАТЬ XP</button>
+              <button className="btn-ghost btn-ghost-sm" onClick={() => { resetTimer(); startTimer(); }}>
                 ЕЩЁ СЕССИЯ
               </button>
             </div>
