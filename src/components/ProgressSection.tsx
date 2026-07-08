@@ -496,16 +496,16 @@ function drawTree(ctx: CanvasRenderingContext2D, fractionalStage: number, size: 
   drawCanopy(ctx, cfg, s, size, L, 'front');
 
   // ── Layer 5: Highlights ──
-  if (cfg.highlightCount > 0) drawHighlights(ctx, cfg, s, size, L);
+  if (cfg.highlightCount > 0) drawHighlights(ctx, cfg, size, L);
 
   // ── Layer 6: Flowers ──
-  if (cfg.flowerCount > 0) drawFlowers(ctx, cfg, s, size, L);
+  if (cfg.flowerCount > 0) drawFlowers(ctx, cfg, L);
 
   // ── Layer 7: Fruits ──
-  if (cfg.fruitCount > 0) drawFruits(ctx, cfg, s, size, L);
+  if (cfg.fruitCount > 0) drawFruits(ctx, cfg, L);
 
   // ── Layer 8: Sparkles ──
-  if (cfg.sparkleCount > 0) drawSparkles(ctx, cfg, s, L);
+  if (cfg.sparkleCount > 0) drawSparkles(ctx, cfg, L);
 
   // ── Floating particles ──
   if (cfg.particleCount > 0) drawParticles(ctx, cfg, s, L);
@@ -722,7 +722,7 @@ function drawCanopy(ctx: CanvasRenderingContext2D, cfg: StageConfig, s: number, 
 
 /* ─── Highlights (upper surface glow) ─── */
 
-function drawHighlights(ctx: CanvasRenderingContext2D, cfg: StageConfig, s: number, size: number, L: TreeLayout) {
+function drawHighlights(ctx: CanvasRenderingContext2D, cfg: StageConfig, size: number, L: TreeLayout) {
   const count = cfg.highlightCount;
   const hlc = cfg.highlightColor;
 
@@ -748,7 +748,7 @@ function drawHighlights(ctx: CanvasRenderingContext2D, cfg: StageConfig, s: numb
 
 /* ─── Flowers (upper crown) ─── */
 
-function drawFlowers(ctx: CanvasRenderingContext2D, cfg: StageConfig, s: number, size: number, L: TreeLayout) {
+function drawFlowers(ctx: CanvasRenderingContext2D, cfg: StageConfig, L: TreeLayout) {
   const count = cfg.flowerCount;
   const fc1 = cfg.flowerColor;
   const fc2 = cfg.flowerColorAlt;
@@ -777,7 +777,7 @@ function drawFlowers(ctx: CanvasRenderingContext2D, cfg: StageConfig, s: number,
 
 /* ─── Fruits (lower crown) ─── */
 
-function drawFruits(ctx: CanvasRenderingContext2D, cfg: StageConfig, s: number, size: number, L: TreeLayout) {
+function drawFruits(ctx: CanvasRenderingContext2D, cfg: StageConfig, L: TreeLayout) {
   const count = cfg.fruitCount;
   const fc1 = cfg.fruitColor;
   const fc2 = cfg.fruitColorAlt;
@@ -806,7 +806,7 @@ function drawFruits(ctx: CanvasRenderingContext2D, cfg: StageConfig, s: number, 
 
 /* ─── Gold sparkles (outer edges) ─── */
 
-function drawSparkles(ctx: CanvasRenderingContext2D, cfg: StageConfig, s: number, L: TreeLayout) {
+function drawSparkles(ctx: CanvasRenderingContext2D, cfg: StageConfig, L: TreeLayout) {
   const count = cfg.sparkleCount;
 
   for (let i = 0; i < count; i++) {

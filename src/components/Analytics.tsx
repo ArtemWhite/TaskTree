@@ -321,7 +321,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
                       if (sectors[index]) {
                         sectors[index].setAttribute('stroke', 'rgba(255,255,255,0.5)');
-                        sectors[index].setAttribute('stroke-width', '3');
+                        sectors[index].setAttribute('stroke-width', '5');
                       }
                     }}
                     onMouseLeave={(_data, index) => {
@@ -464,7 +464,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
                       if (sectors[index]) {
                         sectors[index].setAttribute('stroke', 'rgba(255,255,255,0.5)');
-                        sectors[index].setAttribute('stroke-width', '3');
+                        sectors[index].setAttribute('stroke-width', '5');
                       }
                     }}
                     onMouseLeave={(_data, index) => {
