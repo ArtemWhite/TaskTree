@@ -88,14 +88,19 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
     sportActiveRef.current = null;
   };
 
-  // Suppress browser focus rings across pie sectors
+  // Suppress browser focus rings on ALL elements inside pie containers
   useLayoutEffect(() => {
     [catPieRef, sportPieRef].forEach(ref => {
       if (ref.current) {
-        ref.current.querySelectorAll('.recharts-pie-sector, .recharts-pie-sector path, .recharts-sector').forEach(el => {
-          (el as SVGElement).style.outline = 'none';
-          el.setAttribute('focusable', 'false');
+        ref.current.querySelectorAll('*').forEach(el => {
+          (el as HTMLElement).style.outline = 'none';
         });
+        const svg = ref.current.querySelector('svg');
+        if (svg) {
+          svg.setAttribute('focusable', 'false');
+          svg.style.outline = 'none';
+        }
+        ref.current.style.outline = 'none';
       }
     });
   });
@@ -297,7 +302,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
           </div>
 
           {/* Pie chart - category distribution */}
-          <div className="chart-container" ref={catPieRef}>
+          <div className="chart-container" ref={catPieRef} style={{ outline: 'none' }} tabIndex={-1}>
             <h3 className="micro-cap" style={{ marginBottom: '20px' }}>РАСПРЕДЕЛЕНИЕ ПО КАТЕГОРИЯМ</h3>
             {categoryData.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Нет данных для отображения</p>
@@ -440,7 +445,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
           </div>
 
           {/* Pie chart - workout type distribution */}
-          <div className="chart-container" ref={sportPieRef}>
+          <div className="chart-container" ref={sportPieRef} style={{ outline: 'none' }} tabIndex={-1}>
             <h3 className="micro-cap" style={{ marginBottom: '20px' }}>РАСПРЕДЕЛЕНИЕ ПО ТИПАМ ТРЕНИРОВОК</h3>
             {workoutTypeData.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Нет данных для отображения</p>
