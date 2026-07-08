@@ -16,7 +16,6 @@ interface Props {
   onStartPomodoro: (t: Task) => void;
   editingTask: Task | null;
   setEditingTask: (t: Task | null) => void;
-  onNavigateToCalendar?: () => void;
 }
 
 const DIFFICULTY_XP: Record<Difficulty, number> = { easy: 20, medium: 50, hard: 100 };
@@ -25,7 +24,7 @@ const EMOJI_LIST = ['🧠','🏋️','📚','💻','🎨','🎵','🍳','🏃','
 
 export default function TaskSection({
   tasks, completedTasks, categories, onAdd, onUpdate, onDelete, onComplete, onUncomplete,
-  onAddCategory, onUpdateCategory, onDeleteCategory, onStartPomodoro, editingTask, setEditingTask, onNavigateToCalendar
+  onAddCategory, onUpdateCategory, onDeleteCategory, onStartPomodoro, editingTask, setEditingTask
 }: Props) {
   const [subtab, setSubtab] = useState<'active' | 'completed' | 'categories'>('active');
   const [showForm, setShowForm] = useState(false);
@@ -268,16 +267,7 @@ export default function TaskSection({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <input className="input-spacex" placeholder="Название задачи" value={title}
                     onChange={e => setTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} autoFocus />
-                  <select className="input-spacex" value={categoryId} onChange={e => {
-                    const selectedCat = categories.find(c => c.id === e.target.value);
-                    if (selectedCat && selectedCat.name === 'Спорт' && onNavigateToCalendar) {
-                      onNavigateToCalendar();
-                      resetForm();
-                      setTimeout(() => { document.getElementById('sports-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
-                      return;
-                    }
-                    setCategoryId(e.target.value);
-                  }}>
+                  <select className="input-spacex" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
                   </select>
                   <div style={{ display: 'flex', gap: '12px' }}>

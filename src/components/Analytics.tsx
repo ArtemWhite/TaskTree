@@ -9,11 +9,58 @@ interface Props {
   workouts: Workout[];
 }
 
+interface WorkoutTypeDef {
+  icon: string;
+  name: string;
+  color: string;
+}
+
+const BUILT_IN_WORKOUT_TYPES: WorkoutTypeDef[] = [
+  { icon: '🏃', name: 'Бег', color: '#ff6b6b' },
+  { icon: '🏋️', name: 'Силовая', color: '#ff9f43' },
+  { icon: '🏊', name: 'Плавание', color: '#54a0ff' },
+  { icon: '🚴', name: 'Вело', color: '#5f27cd' },
+  { icon: '🧘', name: 'Растяжка', color: '#a29bfe' },
+  { icon: '🥊', name: 'Единоборства', color: '#e056a0' },
+  { icon: '🎾', name: 'Игровые', color: '#ffd700' },
+  { icon: '🏔️', name: 'Поход', color: '#00b894' },
+  { icon: '💪', name: 'Фитнес', color: '#e17055' },
+  { icon: '⚽', name: 'Футбол', color: '#74b9ff' },
+  { icon: '🏀', name: 'Баскетбол', color: '#fd9644' },
+  { icon: '📋', name: 'Другое', color: '#b2bec3' },
+];
+
 const CHART_COLORS = ['#ffffff', '#f0f0fa', '#a0a0ff', '#5aaa6f', '#ffb7c5', '#ffd700', '#87ceeb', '#ff9eb5'];
+const CUSTOM_TYPES_KEY = 'tasktrecker-custom-workout-types';
+
+function loadCustomTypes(): WorkoutTypeDef[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TYPES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.length > 0 && typeof parsed[0] === 'string') {
+        return (parsed as string[]).map((name: string) => ({ icon: '⭐', name, color: '#3b82c4' }));
+      }
+      return parsed;
+    }
+  } catch {}
+  return [];
+}
 
 export default function Analytics({ tasks, pomodoroHistory, categories, workouts }: Props) {
   const [activeChart, setActiveChart] = useState(0);
   const [analyticsTab, setAnalyticsTab] = useState<'tasks' | 'sport'>('tasks');
+  const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
+  const [activeSportPieIndex, setActiveSportPieIndex] = useState<number | null>(null);
+  const savedCustomTypes = useMemo(() => loadCustomTypes(), []);
+
+  const allWorkoutTypeDefs = useMemo(() => {
+    const custom = savedCustomTypes.filter(t => !BUILT_IN_WORKOUT_TYPES.some(wt => wt.name === t.name));
+    return [...BUILT_IN_WORKOUT_TYPES, ...custom];
+  }, [savedCustomTypes]);
+
+  const getTypeColor = (name: string) => allWorkoutTypeDefs.find(t => t.name === name)?.color || '#b2bec3';
+  const getTypeIcon = (name: string) => allWorkoutTypeDefs.find(t => t.name === name)?.icon || '📋';
 
   // Data: daily completions (last 30 days)
   const dailyData = useMemo(() => {
@@ -60,7 +107,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
   const [barRange, setBarRange] = useState<'7' | '30'>('7');
   const [chartType, setChartType] = useState<ChartType>('bar');
 
-  const renderChart = (data: typeof dailyData, dataKey: string, color: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderChart = (data: Record<string, any>[], dataKey: string, color: string) => {
     const ChartComponent = chartType === 'line' ? LineChart : chartType === 'area' ? AreaChart : chartType === 'dot' ? ScatterChart : BarChart;
     return (
       <ResponsiveContainer width="100%" height={300}>
@@ -84,15 +132,17 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
 
   // Data: workout type distribution
   const workoutTypeData = useMemo(() => {
-    const map: Record<string, { name: string; value: number; xp: number; duration: number }> = {};
+    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string }> = {};
     workouts.filter(w => w.completed).forEach(w => {
-      if (!map[w.workoutType]) map[w.workoutType] = { name: w.workoutType, value: 0, xp: 0, duration: 0 };
+      if (!map[w.workoutType]) {
+        map[w.workoutType] = { name: w.workoutType, value: 0, xp: 0, duration: 0, color: getTypeColor(w.workoutType), icon: getTypeIcon(w.workoutType) };
+      }
       map[w.workoutType].value++;
       map[w.workoutType].xp += w.xp;
       map[w.workoutType].duration += w.duration;
     });
     return Object.values(map).filter(d => d.value > 0);
-  }, [workouts]);
+  }, [workouts, allWorkoutTypeDefs]);
 
   const charts = [
     { title: 'ВЫПОЛНЕНИЕ ЗАДАЧ ПО ДНЯМ', data: dailyData, key: 'tasks', color: 'var(--text-primary)' },
@@ -186,9 +236,21 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
             ) : (
               <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
-                  <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} label={({ name, value, payload }: { name?: string; value?: number; payload?: Record<string, unknown> }) => `${(payload as Record<string, string>).emoji || ''} ${name || ''} (${value || 0})`}>
+                  <Pie
+                    data={categoryData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={120}
+                    onClick={(_data, index) => setActivePieIndex(activePieIndex === index ? null : index)}
+                    label={({ name, value, payload }: { name?: string; value?: number; payload?: Record<string, unknown> }) => `${(payload as Record<string, string>).emoji || ''} ${name || ''} (${value || 0})`}
+                    labelLine={false}
+                  >
                     {categoryData.map((d, i) => (
-                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="#000000" strokeWidth={2} />
+                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]}
+                        stroke={activePieIndex === i ? '#ffffff' : '#000000'}
+                        strokeWidth={activePieIndex === i ? 3 : 2} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -272,16 +334,31 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
             ) : (
               <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
-                  <Pie data={workoutTypeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={120} label={({ name, value }: { name?: string; value?: number }) => `${name || ''} (${value || 0})`}>
-                    {workoutTypeData.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#000000" strokeWidth={2} />
+                  <Pie
+                    data={workoutTypeData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={120}
+                    onClick={(_data, index) => setActiveSportPieIndex(activeSportPieIndex === index ? null : index)}
+                    label={({ name, value, payload }: { name?: string; value?: number; payload?: Record<string, unknown> }) => {
+                      const p = payload as Record<string, string> | undefined;
+                      return `${p?.icon || ''} ${name || ''} (${value || 0})`;
+                    }}
+                    labelLine={false}
+                  >
+                    {workoutTypeData.map((d, i) => (
+                      <Cell key={i} fill={d.color}
+                        stroke={activeSportPieIndex === i ? '#ffffff' : '#000000'}
+                        strokeWidth={activeSportPieIndex === i ? 3 : 2} />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--hairline)', borderRadius: '4px', color: 'var(--text-primary)' }}
                     formatter={(_value, _name, props) => {
                       const p = props?.payload as Record<string, unknown> | undefined;
-                      return [`${_value} тренировок (+${p?.xp || 0} XP, ${p?.duration || 0} мин)`, `${_name}`];
+                      return [`${_value} тренировок (+${p?.xp || 0} XP, ${p?.duration || 0} мин)`, `${p?.icon || ''} ${_name}`];
                     }}
                   />
                 </PieChart>

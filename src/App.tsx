@@ -12,6 +12,7 @@ import DataIO from './components/DataIO';
 import SummaryTables from './components/SummaryTables';
 import SportsSection from './components/SportsSection';
 import WorkoutCalendar from './components/WorkoutCalendar';
+import TaskCalendar from './components/TaskCalendar';
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-1', name: 'Работа', emoji: '🧠', color: '#ffffff' },
@@ -95,6 +96,7 @@ export default function App() {
   const toastProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [pomodoroCompleteToast, setPomodoroCompleteToast] = useState<{ taskId: string; taskTitle: string; xp: number } | null>(null);
   const [pomodoroRestoreSignal, setPomodoroRestoreSignal] = useState(0);
+  const [calendarView, setCalendarView] = useState<'heatmap' | 'tasks' | 'workouts'>('heatmap');
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -343,7 +345,6 @@ export default function App() {
             onStartPomodoro={setPomodoroTask}
             editingTask={editingTask}
             setEditingTask={setEditingTask}
-            onNavigateToCalendar={() => setActiveTab('calendar')}
           />
         )}
         {activeTab === 'progress' && (
@@ -360,8 +361,23 @@ export default function App() {
         {activeTab === 'calendar' && (
           <section>
             <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>КАЛЕНДАРЬ</h2>
-            <CalendarHeatmap completedDays={completedDays} />
-            <WorkoutCalendar workouts={data.workouts || []} />
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
+              <button className={`tab-btn ${calendarView === 'heatmap' ? 'active' : ''}`} onClick={() => setCalendarView('heatmap')}>🔥 ИСТОРИЯ</button>
+              <button className={`tab-btn ${calendarView === 'tasks' ? 'active' : ''}`} onClick={() => setCalendarView('tasks')}>📋 ЗАДАЧИ</button>
+              <button className={`tab-btn ${calendarView === 'workouts' ? 'active' : ''}`} onClick={() => setCalendarView('workouts')}>🏋️ ТРЕНИРОВКИ</button>
+            </div>
+            {calendarView === 'heatmap' && <CalendarHeatmap completedDays={completedDays} />}
+            {calendarView === 'tasks' && (
+              <TaskCalendar
+                tasks={activeTasks}
+                completedTasks={completedTasks}
+                categories={data.categories}
+                onComplete={completeTask}
+                onDelete={deleteTask}
+                onStartPomodoro={setPomodoroTask}
+              />
+            )}
+            {calendarView === 'workouts' && <WorkoutCalendar workouts={data.workouts || []} />}
             <SportsSection
               workouts={data.workouts || []}
               onAdd={addWorkout}
