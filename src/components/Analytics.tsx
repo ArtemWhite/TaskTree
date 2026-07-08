@@ -50,6 +50,7 @@ function loadCustomTypes(): WorkoutTypeDef[] {
 export default function Analytics({ tasks, pomodoroHistory, categories, workouts }: Props) {
   const [activeChart, setActiveChart] = useState(0);
   const [analyticsTab, setAnalyticsTab] = useState<'tasks' | 'sport'>('tasks');
+  const [popupData, setPopupData] = useState<{ emoji: string; name: string; color: string; xp: number; items: string[] } | null>(null);
   const catPieRef = useRef<HTMLDivElement>(null);
   const sportPieRef = useRef<HTMLDivElement>(null);
   const catActiveRef = useRef<number | null>(null);
@@ -108,10 +109,10 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
 
   // Data: category distribution
   const categoryData = useMemo(() => {
-    const map: Record<string, { name: string; emoji: string; color: string; value: number; xp: number }> = {};
-    categories.forEach(c => { map[c.id] = { name: c.name, emoji: c.emoji, color: c.color, value: 0, xp: 0 }; });
+    const map: Record<string, { name: string; emoji: string; color: string; value: number; xp: number; taskNames: string[] }> = {};
+    categories.forEach(c => { map[c.id] = { name: c.name, emoji: c.emoji, color: c.color, value: 0, xp: 0, taskNames: [] }; });
     tasks.filter(t => t.completed).forEach(t => {
-      if (map[t.categoryId]) { map[t.categoryId].value++; map[t.categoryId].xp += t.xp; }
+      if (map[t.categoryId]) { map[t.categoryId].value++; map[t.categoryId].xp += t.xp; map[t.categoryId].taskNames.push(t.title); }
     });
     return Object.values(map).filter(d => d.value > 0);
   }, [tasks, categories]);
@@ -151,14 +152,15 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
 
   // Data: workout type distribution
   const workoutTypeData = useMemo(() => {
-    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string }> = {};
+    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string; taskNames: string[] }> = {};
     workouts.filter(w => w.completed).forEach(w => {
       if (!map[w.workoutType]) {
-        map[w.workoutType] = { name: w.workoutType, value: 0, xp: 0, duration: 0, color: getTypeColor(w.workoutType), icon: getTypeIcon(w.workoutType) };
+        map[w.workoutType] = { name: w.workoutType, value: 0, xp: 0, duration: 0, color: getTypeColor(w.workoutType), icon: getTypeIcon(w.workoutType), taskNames: [] };
       }
       map[w.workoutType].value++;
       map[w.workoutType].xp += w.xp;
       map[w.workoutType].duration += w.duration;
+      map[w.workoutType].taskNames.push(w.title || w.workoutType);
     });
     return Object.values(map).filter(d => d.value > 0);
   }, [workouts, allWorkoutTypeDefs]);
@@ -272,6 +274,12 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       const next = prev === index ? null : index;
                       catActiveRef.current = next;
                       highlightSector(catPieRef.current, next, prev);
+                      const d = categoryData[index];
+                      if (next !== null && d) {
+                        setPopupData({ emoji: d.emoji, name: d.name, color: d.color, xp: d.xp, items: d.taskNames });
+                      } else {
+                        setPopupData(null);
+                      }
                     }}
                     label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
                       const RADIAN = Math.PI / 180;
@@ -299,13 +307,6 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--hairline)', borderRadius: '4px', color: 'var(--text-primary)' }}
-                    formatter={(_value, _name, props) => {
-                      const p = props?.payload as Record<string, unknown> | undefined;
-                      return [`${_value} задач (+${p?.xp || 0} XP)`, `${p?.emoji || ''} ${_name}`];
-                    }}
-                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -397,6 +398,12 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       const next = prev === index ? null : index;
                       sportActiveRef.current = next;
                       highlightSector(sportPieRef.current, next, prev);
+                      const d = workoutTypeData[index];
+                      if (next !== null && d) {
+                        setPopupData({ emoji: d.icon, name: d.name, color: d.color, xp: d.xp, items: d.taskNames });
+                      } else {
+                        setPopupData(null);
+                      }
                     }}
                     label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
                       const RADIAN = Math.PI / 180;
@@ -424,18 +431,48 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       <Cell key={i} fill={d.color} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--hairline)', borderRadius: '4px', color: 'var(--text-primary)' }}
-                    formatter={(_value, _name, props) => {
-                      const p = props?.payload as Record<string, unknown> | undefined;
-                      return [`${_value} тренировок (+${p?.xp || 0} XP, ${p?.duration || 0} мин)`, `${p?.icon || ''} ${_name}`];
-                    }}
-                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
           </div>
         </>
+      )}
+
+      {popupData && (
+        <div className="modal-overlay" onClick={() => setPopupData(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 className="micro-cap" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>{popupData.emoji}</span>
+                <span style={{ color: popupData.color }}>{popupData.name}</span>
+              </h3>
+              <button className="btn-ghost btn-ghost-xs" onClick={() => setPopupData(null)}>✕</button>
+            </div>
+            <div className="card-panel" style={{ padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
+              <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, color: popupData.color }}>
+                +{popupData.xp} XP
+              </div>
+              <div className="micro-cap" style={{ marginTop: '4px' }}>ОПЫТА</div>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-soft)', marginBottom: '12px' }}>
+              Задач: <strong>{popupData.items.length}</strong>
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
+              {popupData.items.map((item, i) => (
+                <div key={i} style={{
+                  padding: '8px 12px', background: 'var(--surface-hover)', borderRadius: '4px',
+                  fontSize: '13px', color: 'var(--text-primary)',
+                  borderLeft: `3px solid ${popupData.color}`,
+                }}>
+                  {item}
+                </div>
+              ))}
+            </div>
+            <button className="btn-ghost btn-ghost-sm" style={{ marginTop: '20px', width: '100%' }} onClick={() => setPopupData(null)}>
+              ЗАКРЫТЬ
+            </button>
+          </div>
+        </div>
       )}
     </section>
   );
