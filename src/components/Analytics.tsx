@@ -276,6 +276,22 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     animationDuration={0}
                     labelLine={false}
                     rootTabIndex={-1}
+                    onMouseEnter={(_data, index) => {
+                      if (!catPieRef.current) return;
+                      const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+                      if (sectors[index]) {
+                        const p = sectors[index].querySelector('path');
+                        if (p) { p.setAttribute('stroke', 'rgba(255, 255, 255, 1)'); p.setAttribute('stroke-width', '3'); }
+                      }
+                    }}
+                    onMouseLeave={(_data, index) => {
+                      if (!catPieRef.current) return;
+                      const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+                      if (sectors[index]) {
+                        const p = sectors[index].querySelector('path');
+                        if (p) { p.removeAttribute('stroke'); p.removeAttribute('stroke-width'); }
+                      }
+                    }}
                     onMouseDown={(_data, index, e: any) => {
                       e.preventDefault();
                       const d = categoryData[index];
@@ -397,6 +413,22 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     animationDuration={0}
                     labelLine={false}
                     rootTabIndex={-1}
+                    onMouseEnter={(_data, index) => {
+                      if (!sportPieRef.current) return;
+                      const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+                      if (sectors[index]) {
+                        const p = sectors[index].querySelector('path');
+                        if (p) { p.setAttribute('stroke', 'rgba(255, 255, 255, 1)'); p.setAttribute('stroke-width', '3'); }
+                      }
+                    }}
+                    onMouseLeave={(_data, index) => {
+                      if (!sportPieRef.current) return;
+                      const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+                      if (sectors[index]) {
+                        const p = sectors[index].querySelector('path');
+                        if (p) { p.removeAttribute('stroke'); p.removeAttribute('stroke-width'); }
+                      }
+                    }}
                     onMouseDown={(_data, index, e: any) => {
                       e.preventDefault();
                       const d = workoutTypeData[index];
