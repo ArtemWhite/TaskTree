@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Task, Category, PomodoroSession, ChartType, Workout } from '../types';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, Legend } from 'recharts';
 
@@ -50,11 +50,16 @@ function loadCustomTypes(): WorkoutTypeDef[] {
 export default function Analytics({ tasks, pomodoroHistory, categories, workouts }: Props) {
   const [activeChart, setActiveChart] = useState(0);
   const [analyticsTab, setAnalyticsTab] = useState<'tasks' | 'sport'>('tasks');
-  const [popupData, setPopupData] = useState<{ emoji: string; name: string; color: string; xp: number; items: string[] } | null>(null);
+  type PopupItem = { title: string; date: string; xp: number; pomodoro: number };
+  const [popupData, setPopupData] = useState<{ emoji: string; name: string; color: string; xp: number; items: PopupItem[] } | null>(null);
+  const [popupSort, setPopupSort] = useState<'date' | 'xp'>('date');
+  const [popupSortDir, setPopupSortDir] = useState<'asc' | 'desc'>('desc');
   const catPieRef = useRef<HTMLDivElement>(null);
   const sportPieRef = useRef<HTMLDivElement>(null);
   const catActiveRef = useRef<number | null>(null);
   const sportActiveRef = useRef<number | null>(null);
+  const catHoverRef = useRef<number | null>(null);
+  const sportHoverRef = useRef<number | null>(null);
 
   const highlightSector = (container: HTMLDivElement | null, index: number | null, prev: number | null) => {
     if (!container) return;
@@ -67,11 +72,49 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
       sectors[index].setAttribute('stroke', '#ffffff');
       sectors[index].setAttribute('stroke-width', '3');
     }
-    // Suppress browser focus ring on all sectors
-    sectors.forEach(s => {
-      s.style.outline = 'none';
-    });
+    sectors.forEach(s => { s.style.outline = 'none'; });
   };
+
+  const clearHighlights = () => {
+    [catPieRef, sportPieRef].forEach(ref => {
+      if (ref.current) {
+        ref.current.querySelectorAll<SVGGElement>('.recharts-pie-sector').forEach(s => {
+          s.removeAttribute('stroke');
+          s.removeAttribute('stroke-width');
+        });
+      }
+    });
+    catActiveRef.current = null;
+    sportActiveRef.current = null;
+  };
+
+  // Suppress browser focus rings across pie sectors
+  useLayoutEffect(() => {
+    [catPieRef, sportPieRef].forEach(ref => {
+      if (ref.current) {
+        ref.current.querySelectorAll('.recharts-pie-sector, .recharts-pie-sector path, .recharts-sector').forEach(el => {
+          (el as SVGElement).style.outline = 'none';
+          el.setAttribute('focusable', 'false');
+        });
+      }
+    });
+  });
+
+  // Re-apply highlight after popup-triggered re-renders
+  useLayoutEffect(() => {
+    if (catActiveRef.current !== null && catPieRef.current) {
+      const s = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+      const i = catActiveRef.current;
+      if (s[i]) { s[i].setAttribute('stroke', '#ffffff'); s[i].setAttribute('stroke-width', '3'); }
+    }
+  });
+  useLayoutEffect(() => {
+    if (sportActiveRef.current !== null && sportPieRef.current) {
+      const s = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+      const i = sportActiveRef.current;
+      if (s[i]) { s[i].setAttribute('stroke', '#ffffff'); s[i].setAttribute('stroke-width', '3'); }
+    }
+  });
   const savedCustomTypes = useMemo(() => loadCustomTypes(), []);
 
   const allWorkoutTypeDefs = useMemo(() => {
@@ -109,10 +152,14 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
 
   // Data: category distribution
   const categoryData = useMemo(() => {
-    const map: Record<string, { name: string; emoji: string; color: string; value: number; xp: number; taskNames: string[] }> = {};
-    categories.forEach(c => { map[c.id] = { name: c.name, emoji: c.emoji, color: c.color, value: 0, xp: 0, taskNames: [] }; });
+    const map: Record<string, { name: string; emoji: string; color: string; value: number; xp: number; tasks: PopupItem[] }> = {};
+    categories.forEach(c => { map[c.id] = { name: c.name, emoji: c.emoji, color: c.color, value: 0, xp: 0, tasks: [] }; });
     tasks.filter(t => t.completed).forEach(t => {
-      if (map[t.categoryId]) { map[t.categoryId].value++; map[t.categoryId].xp += t.xp; map[t.categoryId].taskNames.push(t.title); }
+      if (map[t.categoryId]) {
+        map[t.categoryId].value++;
+        map[t.categoryId].xp += t.xp;
+        map[t.categoryId].tasks.push({ title: t.title, date: t.completedDate || t.createdAt, xp: t.xp, pomodoro: t.pomodoroCount || 0 });
+      }
     });
     return Object.values(map).filter(d => d.value > 0);
   }, [tasks, categories]);
@@ -152,15 +199,15 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
 
   // Data: workout type distribution
   const workoutTypeData = useMemo(() => {
-    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string; taskNames: string[] }> = {};
+    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string; tasks: PopupItem[] }> = {};
     workouts.filter(w => w.completed).forEach(w => {
       if (!map[w.workoutType]) {
-        map[w.workoutType] = { name: w.workoutType, value: 0, xp: 0, duration: 0, color: getTypeColor(w.workoutType), icon: getTypeIcon(w.workoutType), taskNames: [] };
+        map[w.workoutType] = { name: w.workoutType, value: 0, xp: 0, duration: 0, color: getTypeColor(w.workoutType), icon: getTypeIcon(w.workoutType), tasks: [] };
       }
       map[w.workoutType].value++;
       map[w.workoutType].xp += w.xp;
       map[w.workoutType].duration += w.duration;
-      map[w.workoutType].taskNames.push(w.title || w.workoutType);
+      map[w.workoutType].tasks.push({ title: w.title || w.workoutType, date: w.date, xp: w.xp, pomodoro: 0 });
     });
     return Object.values(map).filter(d => d.value > 0);
   }, [workouts, allWorkoutTypeDefs]);
@@ -268,6 +315,24 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     animationDuration={0}
                     labelLine={false}
                     rootTabIndex={-1}
+                    onMouseEnter={(_data, index) => {
+                      catHoverRef.current = index;
+                      if (!catPieRef.current || catActiveRef.current === index) return;
+                      const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+                      if (sectors[index]) {
+                        sectors[index].setAttribute('stroke', 'rgba(255,255,255,0.5)');
+                        sectors[index].setAttribute('stroke-width', '3');
+                      }
+                    }}
+                    onMouseLeave={(_data, index) => {
+                      catHoverRef.current = null;
+                      if (!catPieRef.current || catActiveRef.current === index) return;
+                      const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+                      if (sectors[index]) {
+                        sectors[index].removeAttribute('stroke');
+                        sectors[index].removeAttribute('stroke-width');
+                      }
+                    }}
                     onMouseDown={(_data, index, e: any) => {
                       e.preventDefault();
                       const prev = catActiveRef.current;
@@ -276,7 +341,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       highlightSector(catPieRef.current, next, prev);
                       const d = categoryData[index];
                       if (next !== null && d) {
-                        setPopupData({ emoji: d.emoji, name: d.name, color: d.color, xp: d.xp, items: d.taskNames });
+                        setPopupSort('date'); setPopupSortDir('desc');
+                        setPopupData({ emoji: d.emoji, name: d.name, color: d.color, xp: d.xp, items: d.tasks });
                       } else {
                         setPopupData(null);
                       }
@@ -392,6 +458,24 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     animationDuration={0}
                     labelLine={false}
                     rootTabIndex={-1}
+                    onMouseEnter={(_data, index) => {
+                      sportHoverRef.current = index;
+                      if (!sportPieRef.current || sportActiveRef.current === index) return;
+                      const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+                      if (sectors[index]) {
+                        sectors[index].setAttribute('stroke', 'rgba(255,255,255,0.5)');
+                        sectors[index].setAttribute('stroke-width', '3');
+                      }
+                    }}
+                    onMouseLeave={(_data, index) => {
+                      sportHoverRef.current = null;
+                      if (!sportPieRef.current || sportActiveRef.current === index) return;
+                      const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+                      if (sectors[index]) {
+                        sectors[index].removeAttribute('stroke');
+                        sectors[index].removeAttribute('stroke-width');
+                      }
+                    }}
                     onMouseDown={(_data, index, e: any) => {
                       e.preventDefault();
                       const prev = sportActiveRef.current;
@@ -400,7 +484,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       highlightSector(sportPieRef.current, next, prev);
                       const d = workoutTypeData[index];
                       if (next !== null && d) {
-                        setPopupData({ emoji: d.icon, name: d.name, color: d.color, xp: d.xp, items: d.taskNames });
+                        setPopupSort('date'); setPopupSortDir('desc');
+                        setPopupData({ emoji: d.icon, name: d.name, color: d.color, xp: d.xp, items: d.tasks });
                       } else {
                         setPopupData(null);
                       }
@@ -439,14 +524,14 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
       )}
 
       {popupData && (
-        <div className="modal-overlay" onClick={() => setPopupData(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+        <div className="modal-overlay" onClick={() => { setPopupData(null); clearHighlights(); }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', outline: 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 className="micro-cap" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>{popupData.emoji}</span>
                 <span style={{ color: popupData.color }}>{popupData.name}</span>
               </h3>
-              <button className="btn-ghost btn-ghost-xs" onClick={() => setPopupData(null)}>✕</button>
+              <button className="btn-ghost btn-ghost-xs" onClick={() => { setPopupData(null); clearHighlights(); }}>✕</button>
             </div>
             <div className="card-panel" style={{ padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
               <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, color: popupData.color }}>
@@ -454,21 +539,42 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
               </div>
               <div className="micro-cap" style={{ marginTop: '4px' }}>ОПЫТА</div>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-soft)', marginBottom: '12px' }}>
-              Задач: <strong>{popupData.items.length}</strong>
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
-              {popupData.items.map((item, i) => (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-soft)' }}>
+                Задач: <strong>{popupData.items.length}</strong>
+              </span>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <button className="btn-ghost btn-ghost-xs" style={{ background: popupSort === 'date' ? 'var(--ghost-hover)' : 'transparent', outline: 'none' }}
+                  onClick={() => setPopupSort('date')}>ПО ДАТЕ</button>
+                <button className="btn-ghost btn-ghost-xs" style={{ background: popupSort === 'xp' ? 'var(--ghost-hover)' : 'transparent', outline: 'none' }}
+                  onClick={() => setPopupSort('xp')}>ПО XP</button>
+                <button className="btn-ghost btn-ghost-xs" style={{ outline: 'none', fontSize: '14px', padding: '2px 6px' }}
+                  onClick={() => setPopupSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+                  title={popupSortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}>
+                  {popupSortDir === 'asc' ? '↑' : '↓'}
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
+              {[...popupData.items].sort((a, b) => {
+                const dir = popupSortDir === 'asc' ? 1 : -1;
+                return popupSort === 'date' ? dir * a.date.localeCompare(b.date) : dir * (a.xp - b.xp);
+              }).map((item, i) => (
                 <div key={i} style={{
                   padding: '8px 12px', background: 'var(--surface-hover)', borderRadius: '4px',
                   fontSize: '13px', color: 'var(--text-primary)',
                   borderLeft: `3px solid ${popupData.color}`,
                 }}>
-                  {item}
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>{item.title}</div>
+                  <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-soft)', flexWrap: 'wrap' }}>
+                    <span>{new Date(item.date).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <span>+{item.xp} XP</span>
+                    {item.pomodoro > 0 && <span>🍅 ×{item.pomodoro}</span>}
+                  </div>
                 </div>
               ))}
             </div>
-            <button className="btn-ghost btn-ghost-sm" style={{ marginTop: '20px', width: '100%' }} onClick={() => setPopupData(null)}>
+            <button className="btn-ghost btn-ghost-sm" style={{ marginTop: '20px', width: '100%', outline: 'none' }} onClick={() => { setPopupData(null); clearHighlights(); }}>
               ЗАКРЫТЬ
             </button>
           </div>
