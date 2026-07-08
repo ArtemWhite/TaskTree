@@ -66,6 +66,10 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
       sectors[index].setAttribute('stroke', '#ffffff');
       sectors[index].setAttribute('stroke-width', '3');
     }
+    // Suppress browser focus ring on all sectors
+    sectors.forEach(s => {
+      s.style.outline = 'none';
+    });
   };
   const savedCustomTypes = useMemo(() => loadCustomTypes(), []);
 
@@ -261,7 +265,9 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     isAnimationActive={false}
                     animationDuration={0}
                     labelLine={false}
-                    onClick={(_data, index) => {
+                    rootTabIndex={-1}
+                    onMouseDown={(_data, index, e: any) => {
+                      e.preventDefault();
                       const prev = catActiveRef.current;
                       const next = prev === index ? null : index;
                       catActiveRef.current = next;
@@ -384,7 +390,9 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     isAnimationActive={false}
                     animationDuration={0}
                     labelLine={false}
-                    onClick={(_data, index) => {
+                    rootTabIndex={-1}
+                    onMouseDown={(_data, index, e: any) => {
+                      e.preventDefault();
                       const prev = sportActiveRef.current;
                       const next = prev === index ? null : index;
                       sportActiveRef.current = next;
