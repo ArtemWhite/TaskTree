@@ -238,6 +238,8 @@ select.input-spacex {
 .emoji-option.selected { border-color: var(--text-primary); background: var(--ghost-hover); }
 
 .chart-container { background: var(--bg-secondary); border: 1px solid var(--hairline); border-radius: 8px; padding: 24px; }
+.chart-container,.chart-container *,.chart-container svg,.chart-container svg * { outline: none !important; }
+svg.recharts-surface,svg.recharts-surface * { outline: none !important; }
 
 .checkbox-spacex {
   appearance: none; width: 20px; height: 20px;

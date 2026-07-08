@@ -56,37 +56,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
   const [popupSortDir, setPopupSortDir] = useState<'asc' | 'desc'>('desc');
   const catPieRef = useRef<HTMLDivElement>(null);
   const sportPieRef = useRef<HTMLDivElement>(null);
-  const catActiveRef = useRef<number | null>(null);
-  const sportActiveRef = useRef<number | null>(null);
-  const catHoverRef = useRef<number | null>(null);
-  const sportHoverRef = useRef<number | null>(null);
 
-  const highlightSector = (container: HTMLDivElement | null, index: number | null, prev: number | null) => {
-    if (!container) return;
-    const sectors = container.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-    if (prev !== null && sectors[prev]) {
-      sectors[prev].removeAttribute('stroke');
-      sectors[prev].removeAttribute('stroke-width');
-    }
-    if (index !== null && sectors[index]) {
-      sectors[index].setAttribute('stroke', '#ffffff');
-      sectors[index].setAttribute('stroke-width', '3');
-    }
-    sectors.forEach(s => { s.style.outline = 'none'; });
-  };
-
-  const clearHighlights = () => {
-    [catPieRef, sportPieRef].forEach(ref => {
-      if (ref.current) {
-        ref.current.querySelectorAll<SVGGElement>('.recharts-pie-sector').forEach(s => {
-          s.removeAttribute('stroke');
-          s.removeAttribute('stroke-width');
-        });
-      }
-    });
-    catActiveRef.current = null;
-    sportActiveRef.current = null;
-  };
+  const closePopup = () => setPopupData(null);
 
   // Suppress browser focus rings on ALL elements inside pie containers
   useLayoutEffect(() => {
@@ -105,21 +76,6 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
     });
   });
 
-  // Re-apply highlight after popup-triggered re-renders
-  useLayoutEffect(() => {
-    if (catActiveRef.current !== null && catPieRef.current) {
-      const s = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-      const i = catActiveRef.current;
-      if (s[i]) { s[i].setAttribute('stroke', '#ffffff'); s[i].setAttribute('stroke-width', '3'); }
-    }
-  });
-  useLayoutEffect(() => {
-    if (sportActiveRef.current !== null && sportPieRef.current) {
-      const s = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-      const i = sportActiveRef.current;
-      if (s[i]) { s[i].setAttribute('stroke', '#ffffff'); s[i].setAttribute('stroke-width', '3'); }
-    }
-  });
   const savedCustomTypes = useMemo(() => loadCustomTypes(), []);
 
   const allWorkoutTypeDefs = useMemo(() => {
@@ -320,32 +276,10 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     animationDuration={0}
                     labelLine={false}
                     rootTabIndex={-1}
-                    onMouseEnter={(_data, index) => {
-                      catHoverRef.current = index;
-                      if (!catPieRef.current || catActiveRef.current === index) return;
-                      const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-                      if (sectors[index]) {
-                        sectors[index].setAttribute('stroke', 'rgba(255,255,255,0.5)');
-                        sectors[index].setAttribute('stroke-width', '5');
-                      }
-                    }}
-                    onMouseLeave={(_data, index) => {
-                      catHoverRef.current = null;
-                      if (!catPieRef.current || catActiveRef.current === index) return;
-                      const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-                      if (sectors[index]) {
-                        sectors[index].removeAttribute('stroke');
-                        sectors[index].removeAttribute('stroke-width');
-                      }
-                    }}
                     onMouseDown={(_data, index, e: any) => {
                       e.preventDefault();
-                      const prev = catActiveRef.current;
-                      const next = prev === index ? null : index;
-                      catActiveRef.current = next;
-                      highlightSector(catPieRef.current, next, prev);
                       const d = categoryData[index];
-                      if (next !== null && d) {
+                      if (d) {
                         setPopupSort('date'); setPopupSortDir('desc');
                         setPopupData({ emoji: d.emoji, name: d.name, color: d.color, xp: d.xp, items: d.tasks });
                       } else {
@@ -375,7 +309,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     }}
                   >
                     {categoryData.map((d, i) => (
-                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} />
+                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
                     ))}
                   </Pie>
                 </PieChart>
@@ -463,32 +397,10 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     animationDuration={0}
                     labelLine={false}
                     rootTabIndex={-1}
-                    onMouseEnter={(_data, index) => {
-                      sportHoverRef.current = index;
-                      if (!sportPieRef.current || sportActiveRef.current === index) return;
-                      const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-                      if (sectors[index]) {
-                        sectors[index].setAttribute('stroke', 'rgba(255,255,255,0.5)');
-                        sectors[index].setAttribute('stroke-width', '5');
-                      }
-                    }}
-                    onMouseLeave={(_data, index) => {
-                      sportHoverRef.current = null;
-                      if (!sportPieRef.current || sportActiveRef.current === index) return;
-                      const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-                      if (sectors[index]) {
-                        sectors[index].removeAttribute('stroke');
-                        sectors[index].removeAttribute('stroke-width');
-                      }
-                    }}
                     onMouseDown={(_data, index, e: any) => {
                       e.preventDefault();
-                      const prev = sportActiveRef.current;
-                      const next = prev === index ? null : index;
-                      sportActiveRef.current = next;
-                      highlightSector(sportPieRef.current, next, prev);
                       const d = workoutTypeData[index];
-                      if (next !== null && d) {
+                      if (d) {
                         setPopupSort('date'); setPopupSortDir('desc');
                         setPopupData({ emoji: d.icon, name: d.name, color: d.color, xp: d.xp, items: d.tasks });
                       } else {
@@ -518,7 +430,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     }}
                   >
                     {workoutTypeData.map((d, i) => (
-                      <Cell key={i} fill={d.color} />
+                      <Cell key={i} fill={d.color} stroke="none" />
                     ))}
                   </Pie>
                 </PieChart>
@@ -529,14 +441,14 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
       )}
 
       {popupData && (
-        <div className="modal-overlay" onClick={() => { setPopupData(null); clearHighlights(); }}>
+        <div className="modal-overlay" onClick={closePopup}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', outline: 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 className="micro-cap" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>{popupData.emoji}</span>
                 <span style={{ color: popupData.color }}>{popupData.name}</span>
               </h3>
-              <button className="btn-ghost btn-ghost-xs" onClick={() => { setPopupData(null); clearHighlights(); }}>✕</button>
+              <button className="btn-ghost btn-ghost-xs" onClick={closePopup}>✕</button>
             </div>
             <div className="card-panel" style={{ padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
               <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, color: popupData.color }}>
@@ -579,7 +491,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                 </div>
               ))}
             </div>
-            <button className="btn-ghost btn-ghost-sm" style={{ marginTop: '20px', width: '100%', outline: 'none' }} onClick={() => { setPopupData(null); clearHighlights(); }}>
+            <button className="btn-ghost btn-ghost-sm" style={{ marginTop: '20px', width: '100%', outline: 'none' }} onClick={closePopup}>
               ЗАКРЫТЬ
             </button>
           </div>
