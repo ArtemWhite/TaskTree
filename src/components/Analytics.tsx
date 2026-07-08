@@ -242,10 +242,19 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={120}
+                    outerRadius={100}
                     onClick={(_data, index) => setActivePieIndex(activePieIndex === index ? null : index)}
-                    label={({ name, value, payload }: { name?: string; value?: number; payload?: Record<string, unknown> }) => `${(payload as Record<string, string>).emoji || ''} ${name || ''} (${value || 0})`}
-                    labelLine={false}
+                    label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
+                      const radius = outerRadius * 1.5;
+                      const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+                      const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                      const color = payload?.color || '#ffffff';
+                      return (
+                        <text x={x} y={y} fill={color} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12} fontWeight={600}>
+                          {payload?.emoji || ''} {payload?.name} ({payload?.value})
+                        </text>
+                      );
+                    }}
                   >
                     {categoryData.map((d, i) => (
                       <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]}
@@ -340,13 +349,19 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={120}
+                    outerRadius={100}
                     onClick={(_data, index) => setActiveSportPieIndex(activeSportPieIndex === index ? null : index)}
-                    label={({ name, value, payload }: { name?: string; value?: number; payload?: Record<string, unknown> }) => {
-                      const p = payload as Record<string, string> | undefined;
-                      return `${p?.icon || ''} ${name || ''} (${value || 0})`;
+                    label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
+                      const radius = outerRadius * 1.5;
+                      const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+                      const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                      const color = payload?.color || '#ffffff';
+                      return (
+                        <text x={x} y={y} fill={color} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12} fontWeight={600}>
+                          {payload?.icon || ''} {payload?.name} ({payload?.value})
+                        </text>
+                      );
                     }}
-                    labelLine={false}
                   >
                     {workoutTypeData.map((d, i) => (
                       <Cell key={i} fill={d.color}
