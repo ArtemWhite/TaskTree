@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { Task, Category, PomodoroSession, ChartType, Workout } from '../types';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, Legend } from 'recharts';
 
@@ -43,15 +43,30 @@ function loadCustomTypes(): WorkoutTypeDef[] {
       }
       return parsed;
     }
-  } catch {}
+  } catch { }
   return [];
 }
 
 export default function Analytics({ tasks, pomodoroHistory, categories, workouts }: Props) {
   const [activeChart, setActiveChart] = useState(0);
   const [analyticsTab, setAnalyticsTab] = useState<'tasks' | 'sport'>('tasks');
-  const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
-  const [activeSportPieIndex, setActiveSportPieIndex] = useState<number | null>(null);
+  const catPieRef = useRef<HTMLDivElement>(null);
+  const sportPieRef = useRef<HTMLDivElement>(null);
+  const catActiveRef = useRef<number | null>(null);
+  const sportActiveRef = useRef<number | null>(null);
+
+  const highlightSector = (container: HTMLDivElement | null, index: number | null, prev: number | null) => {
+    if (!container) return;
+    const sectors = container.querySelectorAll<SVGGElement>('.recharts-pie-sector');
+    if (prev !== null && sectors[prev]) {
+      sectors[prev].removeAttribute('stroke');
+      sectors[prev].removeAttribute('stroke-width');
+    }
+    if (index !== null && sectors[index]) {
+      sectors[index].setAttribute('stroke', '#ffffff');
+      sectors[index].setAttribute('stroke-width', '3');
+    }
+  };
   const savedCustomTypes = useMemo(() => loadCustomTypes(), []);
 
   const allWorkoutTypeDefs = useMemo(() => {
@@ -185,7 +200,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
 
       {/* Analytics tab selector: Tasks / Sport */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--hairline)' }}>
-        {(['tasks','sport'] as const).map(t => (
+        {(['tasks', 'sport'] as const).map(t => (
           <button key={t} className={`tab-btn ${analyticsTab === t ? 'active' : ''}`} onClick={() => { setAnalyticsTab(t); setActiveChart(0); }}>
             {t === 'tasks' ? '📋 ЗАДАЧИ' : '🏋️ СПОРТ'}
           </button>
@@ -197,7 +212,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
           {/* Chart type toggle */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="micro-cap" style={{ fontSize: '10px', marginRight: '8px' }}>ТИП ГРАФИКА:</span>
-            {(['bar','line','area','dot'] as ChartType[]).map(t => (
+            {(['bar', 'line', 'area', 'dot'] as ChartType[]).map(t => (
               <button key={t} className={`btn-ghost btn-ghost-xs ${chartType === t ? '' : ''}`}
                 style={{ background: chartType === t ? 'var(--ghost-hover)' : 'transparent' }}
                 onClick={() => setChartType(t)}>
@@ -229,7 +244,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
           </div>
 
           {/* Pie chart - category distribution */}
-          <div className="chart-container">
+          <div className="chart-container" ref={catPieRef}>
             <h3 className="micro-cap" style={{ marginBottom: '20px' }}>РАСПРЕДЕЛЕНИЕ ПО КАТЕГОРИЯМ</h3>
             {categoryData.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Нет данных для отображения</p>
@@ -243,23 +258,39 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    onClick={(_data, index) => setActivePieIndex(activePieIndex === index ? null : index)}
+                    isAnimationActive={false}
+                    animationDuration={0}
+                    labelLine={false}
+                    onClick={(_data, index) => {
+                      const prev = catActiveRef.current;
+                      const next = prev === index ? null : index;
+                      catActiveRef.current = next;
+                      highlightSector(catPieRef.current, next, prev);
+                    }}
                     label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
-                      const radius = outerRadius * 1.5;
-                      const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                      const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                      const RADIAN = Math.PI / 180;
+                      const cos = Math.cos(-midAngle * RADIAN);
+                      const sin = Math.sin(-midAngle * RADIAN);
+                      const lineEndR = outerRadius * 1.4;
+                      const textR = outerRadius * 1.6;
+                      const ex = cx + lineEndR * cos;
+                      const ey = cy + lineEndR * sin;
+                      const tx = cx + textR * cos;
+                      const ty = cy + textR * sin;
                       const color = payload?.color || '#ffffff';
+                      const textAnchor = tx > cx ? 'start' : 'end';
                       return (
-                        <text x={x} y={y} fill={color} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12} fontWeight={600}>
-                          {payload?.emoji || ''} {payload?.name} ({payload?.value})
-                        </text>
+                        <g>
+                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
+                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
+                            {payload?.emoji || ''} {payload?.name} ({payload?.value})
+                          </text>
+                        </g>
                       );
                     }}
                   >
                     {categoryData.map((d, i) => (
-                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]}
-                        stroke={activePieIndex === i ? '#ffffff' : '#000000'}
-                        strokeWidth={activePieIndex === i ? 3 : 2} />
+                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -301,7 +332,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
           {/* Chart type toggle */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="micro-cap" style={{ fontSize: '10px', marginRight: '8px' }}>ТИП ГРАФИКА:</span>
-            {(['bar','line','area','dot'] as ChartType[]).map(t => (
+            {(['bar', 'line', 'area', 'dot'] as ChartType[]).map(t => (
               <button key={t} className={`btn-ghost btn-ghost-xs ${chartType === t ? '' : ''}`}
                 style={{ background: chartType === t ? 'var(--ghost-hover)' : 'transparent' }}
                 onClick={() => setChartType(t)}>
@@ -336,7 +367,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
           </div>
 
           {/* Pie chart - workout type distribution */}
-          <div className="chart-container">
+          <div className="chart-container" ref={sportPieRef}>
             <h3 className="micro-cap" style={{ marginBottom: '20px' }}>РАСПРЕДЕЛЕНИЕ ПО ТИПАМ ТРЕНИРОВОК</h3>
             {workoutTypeData.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Нет данных для отображения</p>
@@ -350,23 +381,39 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    onClick={(_data, index) => setActiveSportPieIndex(activeSportPieIndex === index ? null : index)}
+                    isAnimationActive={false}
+                    animationDuration={0}
+                    labelLine={false}
+                    onClick={(_data, index) => {
+                      const prev = sportActiveRef.current;
+                      const next = prev === index ? null : index;
+                      sportActiveRef.current = next;
+                      highlightSector(sportPieRef.current, next, prev);
+                    }}
                     label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
-                      const radius = outerRadius * 1.5;
-                      const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                      const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                      const RADIAN = Math.PI / 180;
+                      const cos = Math.cos(-midAngle * RADIAN);
+                      const sin = Math.sin(-midAngle * RADIAN);
+                      const lineEndR = outerRadius * 1.4;
+                      const textR = outerRadius * 1.6;
+                      const ex = cx + lineEndR * cos;
+                      const ey = cy + lineEndR * sin;
+                      const tx = cx + textR * cos;
+                      const ty = cy + textR * sin;
                       const color = payload?.color || '#ffffff';
+                      const textAnchor = tx > cx ? 'start' : 'end';
                       return (
-                        <text x={x} y={y} fill={color} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12} fontWeight={600}>
-                          {payload?.icon || ''} {payload?.name} ({payload?.value})
-                        </text>
+                        <g>
+                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
+                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
+                            {payload?.icon || ''} {payload?.name} ({payload?.value})
+                          </text>
+                        </g>
                       );
                     }}
                   >
                     {workoutTypeData.map((d, i) => (
-                      <Cell key={i} fill={d.color}
-                        stroke={activeSportPieIndex === i ? '#ffffff' : '#000000'}
-                        strokeWidth={activeSportPieIndex === i ? 3 : 2} />
+                      <Cell key={i} fill={d.color} />
                     ))}
                   </Pie>
                   <Tooltip
