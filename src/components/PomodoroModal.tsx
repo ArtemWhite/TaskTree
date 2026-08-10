@@ -125,7 +125,7 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
   }
 
   return (
-    <div className="modal-overlay" onClick={() => { if (isRunning && !isFinished) { setMinimized(true); } else { onClose(); } }}>
+    <div className="modal-overlay" onClick={() => { if (!isFinished) { setMinimized(true); } else { onClose(); } }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', minWidth: '380px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h3 className="micro-cap" style={{ margin: 0 }}>🍅 ПОМОДОРО</h3>

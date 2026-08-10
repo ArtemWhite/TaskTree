@@ -50,10 +50,11 @@ function loadCustomTypes(): WorkoutTypeDef[] {
 export default function Analytics({ tasks, pomodoroHistory, categories, workouts }: Props) {
   const [activeChart, setActiveChart] = useState(0);
   const [analyticsTab, setAnalyticsTab] = useState<'tasks' | 'sport'>('tasks');
-  type PopupItem = { title: string; date: string; xp: number; pomodoro: number };
+  type PopupItem = { title: string; date: string; xp: number; pomodoro: number; duration?: number };
   const [popupData, setPopupData] = useState<{ emoji: string; name: string; color: string; xp: number; items: PopupItem[] } | null>(null);
   const [popupSort, setPopupSort] = useState<'date' | 'xp'>('date');
   const [popupSortDir, setPopupSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sportPieMode, setSportPieMode] = useState<'count' | 'duration'>('count');
   const catPieRef = useRef<HTMLDivElement>(null);
   const sportPieRef = useRef<HTMLDivElement>(null);
 
@@ -168,21 +169,19 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
       map[w.workoutType].value++;
       map[w.workoutType].xp += w.xp;
       map[w.workoutType].duration += w.duration;
-      map[w.workoutType].tasks.push({ title: w.title || w.workoutType, date: w.date, xp: w.xp, pomodoro: 0 });
+      map[w.workoutType].tasks.push({ title: w.title || w.workoutType, date: w.date, xp: w.xp, pomodoro: 0, duration: w.duration });
     });
     return Object.values(map).filter(d => d.value > 0);
   }, [workouts, allWorkoutTypeDefs]);
+
+  const pieWorkoutTypeData = useMemo(() => {
+    return workoutTypeData.map(d => ({ ...d, currentValue: sportPieMode === 'count' ? d.value : d.duration }));
+  }, [workoutTypeData, sportPieMode]);
 
   const charts = [
     { title: 'ВЫПОЛНЕНИЕ ЗАДАЧ ПО ДНЯМ', data: dailyData, key: 'tasks', color: 'var(--text-primary)' },
     { title: 'XP ПО ДНЯМ', data: dailyData, key: 'xp', color: '#5aaa6f' },
     { title: `ПОМОДОРО-СЕССИИ (${barRange} ДНЕЙ)`, data: barRange === '7' ? barData.last7 : barData.last30, key: 'pomodoro', color: '#ffb7c5' },
-  ];
-
-  const sportCharts = [
-    { title: 'ТРЕНИРОВКИ ПО ДНЯМ', data: dailyData, key: 'workouts', color: 'var(--text-primary)' },
-    { title: 'XP ТРЕНИРОВОК ПО ДНЯМ', data: dailyData, key: 'workoutXP', color: '#5aaa6f' },
-    { title: `ДЛИТЕЛЬНОСТЬ ТРЕНИРОВОК (${barRange} ДНЕЙ)`, data: barRange === '7' ? barData.last7 : barData.last30, key: 'tasks', color: '#87ceeb' },
   ];
 
   const sportDurationData = useMemo(() => {
@@ -200,6 +199,12 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
     });
     return Object.values(map);
   }, [workouts]);
+
+  const sportCharts = [
+    { title: 'ТРЕНИРОВКИ ПО ДНЯМ', data: dailyData, key: 'workouts', color: 'var(--text-primary)' },
+    { title: 'XP ТРЕНИРОВОК ПО ДНЯМ', data: dailyData, key: 'workoutXP', color: '#5aaa6f' },
+    { title: `ДЛИТЕЛЬНОСТЬ ТРЕНИРОВОК (${barRange} ДНЕЙ)`, data: barRange === '7' ? sportDurationData.slice(-7) : sportDurationData, key: 'duration', color: '#87ceeb' },
+  ];
 
   const totalWorkoutStats = useMemo(() => ({
     total: workouts.length,
@@ -272,9 +277,10 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    isAnimationActive={false}
-                    animationDuration={0}
+                    isAnimationActive={true}
+                    animationDuration={400}
                     labelLine={false}
+                    label={false}
                     rootTabIndex={-1}
                     onMouseEnter={(_data, index) => {
                       if (!catPieRef.current) return;
@@ -302,6 +308,23 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                         setPopupData(null);
                       }
                     }}
+                  >
+                    {categoryData.map((d, i) => (
+                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Pie
+                    data={categoryData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    isAnimationActive={false}
+                    fill="transparent"
+                    stroke="none"
+                    labelLine={false}
+                    style={{ pointerEvents: 'none' }}
                     label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
                       const RADIAN = Math.PI / 180;
                       const cos = Math.cos(-midAngle * RADIAN);
@@ -316,8 +339,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       const textAnchor = tx > cx ? 'start' : 'end';
                       return (
                         <g>
-                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
-                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
+                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" style={{ transition: 'all 0.4s ease' }} />
+                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600} style={{ transition: 'all 0.4s ease' }}>
                             {payload?.emoji || ''} {payload?.name} ({payload?.value})
                           </text>
                         </g>
@@ -388,30 +411,38 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
           {/* Active chart */}
           <div className="chart-container" style={{ marginBottom: '24px' }}>
             <h3 className="micro-cap" style={{ marginBottom: '20px' }}>{sportCharts[activeChart].title}</h3>
-            {activeChart === 2
-              ? renderChart(sportDurationData, 'duration', sportCharts[activeChart].color)
-              : renderChart(sportCharts[activeChart].data, sportCharts[activeChart].key, sportCharts[activeChart].color)
-            }
+            {renderChart(sportCharts[activeChart].data, sportCharts[activeChart].key, sportCharts[activeChart].color)}
           </div>
 
           {/* Pie chart - workout type distribution */}
           <div className="chart-container" ref={sportPieRef} style={{ outline: 'none' }} tabIndex={-1}>
-            <h3 className="micro-cap" style={{ marginBottom: '20px' }}>РАСПРЕДЕЛЕНИЕ ПО ТИПАМ ТРЕНИРОВОК</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+              <h3 className="micro-cap" style={{ margin: 0 }}>РАСПРЕДЕЛЕНИЕ ПО ТИПАМ ТРЕНИРОВОК</h3>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button className="btn-ghost btn-ghost-xs" 
+                  style={{ background: sportPieMode === 'count' ? 'var(--ghost-hover)' : 'transparent' }} 
+                  onClick={() => setSportPieMode('count')}>КОЛИЧЕСТВО</button>
+                <button className="btn-ghost btn-ghost-xs" 
+                  style={{ background: sportPieMode === 'duration' ? 'var(--ghost-hover)' : 'transparent' }} 
+                  onClick={() => setSportPieMode('duration')}>ВРЕМЯ</button>
+              </div>
+            </div>
             {workoutTypeData.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Нет данных для отображения</p>
             ) : (
               <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <Pie
-                    data={workoutTypeData}
-                    dataKey="value"
+                    data={pieWorkoutTypeData}
+                    dataKey="currentValue"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    isAnimationActive={false}
-                    animationDuration={0}
+                    isAnimationActive={true}
+                    animationDuration={400}
                     labelLine={false}
+                    label={false}
                     rootTabIndex={-1}
                     onMouseEnter={(_data, index) => {
                       if (!sportPieRef.current) return;
@@ -439,7 +470,24 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                         setPopupData(null);
                       }
                     }}
-                    label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
+                  >
+                    {workoutTypeData.map((d, i) => (
+                      <Cell key={i} fill={d.color} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Pie
+                    data={pieWorkoutTypeData}
+                    dataKey="currentValue"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    isAnimationActive={false}
+                    fill="transparent"
+                    stroke="none"
+                    labelLine={false}
+                    style={{ pointerEvents: 'none' }}
+                    label={({ cx, cy, midAngle, outerRadius, payload, value }: any) => {
                       const RADIAN = Math.PI / 180;
                       const cos = Math.cos(-midAngle * RADIAN);
                       const sin = Math.sin(-midAngle * RADIAN);
@@ -453,9 +501,9 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       const textAnchor = tx > cx ? 'start' : 'end';
                       return (
                         <g>
-                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
-                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
-                            {payload?.icon || ''} {payload?.name} ({payload?.value})
+                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" style={{ transition: 'all 0.4s ease' }} />
+                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600} style={{ transition: 'all 0.4s ease' }}>
+                            {payload?.icon || ''} {payload?.name} ({value}{sportPieMode === 'duration' ? ' мин' : ''})
                           </text>
                         </g>
                       );
@@ -519,6 +567,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     <span>{new Date(item.date).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     <span>+{item.xp} XP</span>
                     {item.pomodoro > 0 && <span>🍅 ×{item.pomodoro}</span>}
+                    {item.duration !== undefined && item.duration > 0 && <span>⏱ {item.duration} мин</span>}
                   </div>
                 </div>
               ))}

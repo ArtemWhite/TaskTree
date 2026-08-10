@@ -458,7 +458,7 @@ export default function App() {
 
       {pomodoroTask && (
         <PomodoroModal
-          task={pomodoroTask}
+          task={data.tasks.find(t => t.id === pomodoroTask.id) || pomodoroTask}
           settings={data.settings}
           onClose={() => { setPomodoroTask(null); setPomodoroCompleteToast(null); }}
           onUpdateSettings={updateSettings}
