@@ -1,38 +1,21 @@
 import { useMemo, useState } from 'react';
 import type { Task, Category } from '../../types';
+import { CalendarService, type BaseCalendarCell } from '../../services/CalendarService';
 
 interface Props {
   tasks: Task[];
-  completedTasks: Task[];
   categories: Category[];
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onStartPomodoro: (t: Task) => void;
 }
 
-interface CalendarDayCell {
+interface CalendarDayCell extends BaseCalendarCell {
   day: number;
   date: string;
   count: number;
   level: number;
   taskIds: string[];
-}
-
-interface MonthGridData {
-  name: string;
-  month: number;
-  cells: CalendarDayCell[];
-}
-
-const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
-function getCalendarLevel(count: number): number {
-  if (count >= 5) return 4;
-  if (count >= 3) return 3;
-  if (count >= 2) return 2;
-  if (count >= 1) return 1;
-  return 0;
 }
 
 function getTaskStyle(level: number, isSelected: boolean) {
@@ -60,52 +43,40 @@ function getTaskStyle(level: number, isSelected: boolean) {
   }
 }
 
-function build7ColumnCalendarYearGrid(year: number, dayMap: Record<string, { count: number; taskIds: string[] }>): MonthGridData[] {
-  return Array.from({ length: 12 }, (_, month) => {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    // Monday = 0, Sunday = 6
-    const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
-    const cells: CalendarDayCell[] = [];
-
-    // Empty offset cells before day 1
-    for (let i = 0; i < firstDayIndex; i++) {
-      cells.push({ day: 0, date: '', count: 0, level: -1, taskIds: [] });
-    }
-
-    // Actual days of month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-      const info = dayMap[dateStr];
-      const count = info ? info.count : 0;
-      cells.push({ day, date: dateStr, count, level: getCalendarLevel(count), taskIds: info ? info.taskIds : [] });
-    }
-
-    // Always pad to 42 cells (6 rows * 7 columns) for uniform card height
-    while (cells.length < 42) {
-      cells.push({ day: 0, date: '', count: 0, level: -1, taskIds: [] });
-    }
-
-    return { name: MONTH_NAMES[month], month, cells };
-  });
-}
-
-export default function TaskCalendar({ tasks, completedTasks, categories, onComplete, onDelete, onStartPomodoro }: Props) {
+export default function TaskCalendar({ tasks, categories, onComplete, onDelete, onStartPomodoro }: Props) {
   const [calendarViewYear, setCalendarViewYear] = useState(new Date().getFullYear());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
-  const calendarMonths = useMemo(() => {
-    const dayMap: Record<string, { count: number; taskIds: string[] }> = {};
+  const dayMap = useMemo(() => {
+    const map: Record<string, { count: number; taskIds: string[] }> = {};
     tasks.forEach(t => {
       const dateKey = t.deadline ? t.deadline.slice(0, 10) : null;
       if (dateKey) {
-        if (!dayMap[dateKey]) dayMap[dateKey] = { count: 0, taskIds: [] };
-        dayMap[dateKey].count++;
-        dayMap[dateKey].taskIds.push(t.id);
+        if (!map[dateKey]) map[dateKey] = { count: 0, taskIds: [] };
+        map[dateKey].count++;
+        map[dateKey].taskIds.push(t.id);
       }
     });
-    return build7ColumnCalendarYearGrid(calendarViewYear, dayMap);
-  }, [tasks, calendarViewYear]);
+    return map;
+  }, [tasks]);
+
+  const months = useMemo(() => {
+    return CalendarService.buildYearGrid<CalendarDayCell>(
+      calendarViewYear,
+      (day, dateStr) => {
+        const info = dayMap[dateStr];
+        const count = info ? info.count : 0;
+        return {
+          day,
+          date: dateStr,
+          count,
+          level: CalendarService.getLevel(count),
+          taskIds: info ? info.taskIds : [],
+        };
+      },
+      () => ({ day: 0, date: '', count: 0, level: -1, taskIds: [] })
+    );
+  }, [calendarViewYear, dayMap]);
 
   const categoryMap = useMemo(() => {
     const m: Record<string, Category> = {};
@@ -115,37 +86,46 @@ export default function TaskCalendar({ tasks, completedTasks, categories, onComp
 
   const selectedDateTasks = useMemo(() => {
     if (!selectedCalendarDate) return [];
-    return [...tasks, ...completedTasks].filter(t => t.deadline && t.deadline.slice(0, 10) === selectedCalendarDate);
-  }, [selectedCalendarDate, tasks, completedTasks]);
+    return tasks.filter(t => t.deadline && t.deadline.slice(0, 10) === selectedCalendarDate);
+  }, [tasks, selectedCalendarDate]);
 
   return (
-    <div>
+    <div className="card-panel">
+      {/* Header & Year Switcher */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h3 className="micro-cap" style={{ margin: 0 }}>📋 КАЛЕНДАРЬ ЗАДАЧ С ДЕДЛАЙНОМ ({calendarViewYear})</h3>
+        <h3 className="micro-cap" style={{ margin: 0, fontSize: '14px' }}>📋 КАЛЕНДАРЬ ЗАДАЧ С ДЕДЛАЙНОМ ({calendarViewYear})</h3>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className="btn-ghost btn-ghost-xs" onClick={() => setCalendarViewYear(y => y - 1)}>◀ {calendarViewYear - 1}</button>
-          <button className="btn-ghost btn-ghost-xs" onClick={() => setCalendarViewYear(new Date().getFullYear())}>ТЕКУЩИЙ ГОД</button>
+          <button className="btn-ghost btn-ghost-xs" style={{ background: 'var(--ghost-hover)' }} onClick={() => setCalendarViewYear(new Date().getFullYear())}>ТЕКУЩИЙ ГОД</button>
           <button className="btn-ghost btn-ghost-xs" onClick={() => setCalendarViewYear(y => y + 1)}>{calendarViewYear + 1} ▶</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-        {calendarMonths.map(m => (
-          <div key={m.month} className="card-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--text-primary)', marginBottom: '12px', textTransform: 'uppercase' }}>
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '11px', color: 'var(--text-muted)' }}>
+        <span>Меньше</span>
+        {[0, 1, 2, 3, 4].map(lvl => (
+          <div key={lvl} style={{ width: '14px', height: '14px', borderRadius: '3px', ...getTaskStyle(lvl, false) }} />
+        ))}
+        <span>Больше задач</span>
+      </div>
+
+      {/* 12 Months Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+        {months.map(m => (
+          <div key={m.month} style={{ background: 'var(--surface-hover)', borderRadius: '8px', padding: '12px', border: '1px solid var(--hairline)' }}>
+            <div style={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-soft)', marginBottom: '8px', letterSpacing: '0.8px' }}>
               {m.name}
             </div>
 
             {/* Weekdays Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px', textAlign: 'center' }}>
-              {WEEKDAYS.map((wd, i) => (
-                <div key={wd} style={{ fontSize: '10px', color: i >= 5 ? '#ff9f43' : 'var(--text-muted)', fontWeight: 600 }}>
-                  {wd}
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '4px', textAlign: 'center' }}>
+              {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(wd => (
+                <span key={wd} style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>{wd}</span>
               ))}
             </div>
 
-            {/* 7-Column Days Grid (6 uniform rows) */}
+            {/* 7-Column Days Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
               {m.cells.map((cell, ci) => {
                 if (cell.level === -1) {
@@ -182,9 +162,10 @@ export default function TaskCalendar({ tasks, completedTasks, categories, onComp
         ))}
       </div>
 
+      {/* Selected Day Tasks Modal */}
       {selectedCalendarDate && (
         <div className="modal-overlay" onClick={() => setSelectedCalendarDate(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 className="micro-cap" style={{ margin: 0 }}>
                 📅 {new Date(selectedCalendarDate + 'T12:00:00').toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -193,7 +174,7 @@ export default function TaskCalendar({ tasks, completedTasks, categories, onComp
             </div>
 
             {selectedDateTasks.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Нет задач на этот день.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>На этот день нет задач с дедлайном.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '350px', overflowY: 'auto' }}>
                 {selectedDateTasks.map(t => {

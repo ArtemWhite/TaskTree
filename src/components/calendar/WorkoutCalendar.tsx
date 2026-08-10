@@ -22,11 +22,11 @@ function getWorkoutStyle(level: number, isSelected: boolean) {
     case 4:
       return { background: '#3b82f6', color: '#ffffff', fontWeight: 700, border: '1px solid rgba(255,255,255,0.2)' };
     case 3:
-      return { background: 'rgba(59, 130, 246, 0.8)', color: '#eff6ff', fontWeight: 700, border: '1px solid rgba(255,255,255,0.1)' };
+      return { background: 'rgba(59, 130, 246, 0.85)', color: '#eff6ff', fontWeight: 700, border: '1px solid rgba(255,255,255,0.1)' };
     case 2:
-      return { background: 'rgba(37, 99, 235, 0.6)', color: '#dbeafe', fontWeight: 600, border: '1px solid transparent' };
+      return { background: 'rgba(37, 99, 235, 0.65)', color: '#dbeafe', fontWeight: 600, border: '1px solid transparent' };
     case 1:
-      return { background: 'rgba(29, 78, 216, 0.4)', color: '#bfdbfe', fontWeight: 600, border: '1px solid transparent' };
+      return { background: 'rgba(29, 78, 216, 0.45)', color: '#bfdbfe', fontWeight: 600, border: '1px solid transparent' };
     default:
       return { background: 'rgba(255, 255, 255, 0.03)', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 400, border: '1px solid transparent' };
   }
@@ -66,29 +66,38 @@ export default function WorkoutCalendar({ workouts }: Props) {
   }, [workouts]);
 
   return (
-    <div>
+    <div className="card-panel">
+      {/* Header & Year Switcher */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h3 className="micro-cap" style={{ margin: 0 }}>🏋️ КАЛЕНДАРЬ ТРЕНИРОВОК ({viewYear})</h3>
+        <h3 className="micro-cap" style={{ margin: 0, fontSize: '14px' }}>🏋️ КАЛЕНДАРЬ ТРЕНИРОВОК ({viewYear})</h3>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className="btn-ghost btn-ghost-xs" onClick={() => setViewYear(y => y - 1)}>◀ {viewYear - 1}</button>
-          <button className="btn-ghost btn-ghost-xs" onClick={() => setViewYear(new Date().getFullYear())}>ТЕКУЩИЙ ГОД</button>
+          <button className="btn-ghost btn-ghost-xs" style={{ background: 'var(--ghost-hover)' }} onClick={() => setViewYear(new Date().getFullYear())}>ТЕКУЩИЙ ГОД</button>
           <button className="btn-ghost btn-ghost-xs" onClick={() => setViewYear(y => y + 1)}>{viewYear + 1} ▶</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '11px', color: 'var(--text-muted)' }}>
+        <span>Меньше</span>
+        {[0, 1, 2, 3, 4].map(lvl => (
+          <div key={lvl} style={{ width: '14px', height: '14px', borderRadius: '3px', ...getWorkoutStyle(lvl, false) }} />
+        ))}
+        <span>Больше тренировок</span>
+      </div>
+
+      {/* 12 Months Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
         {months.map(m => (
-          <div key={m.month} className="card-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--text-primary)', marginBottom: '12px', textTransform: 'uppercase' }}>
+          <div key={m.month} style={{ background: 'var(--surface-hover)', borderRadius: '8px', padding: '12px', border: '1px solid var(--hairline)' }}>
+            <div style={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-soft)', marginBottom: '8px', letterSpacing: '0.8px' }}>
               {m.name}
             </div>
 
             {/* Weekdays Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px', textAlign: 'center' }}>
-              {CalendarService.WEEKDAYS.map((wd, i) => (
-                <div key={wd} style={{ fontSize: '10px', color: i >= 5 ? '#ff9f43' : 'var(--text-muted)', fontWeight: 600 }}>
-                  {wd}
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '4px', textAlign: 'center' }}>
+              {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(wd => (
+                <span key={wd} style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>{wd}</span>
               ))}
             </div>
 
@@ -131,6 +140,7 @@ export default function WorkoutCalendar({ workouts }: Props) {
         ))}
       </div>
 
+      {/* Day Workout Details Modal */}
       {selectedDay && (
         <div className="modal-overlay" onClick={() => setSelectedDay(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
@@ -152,12 +162,15 @@ export default function WorkoutCalendar({ workouts }: Props) {
                   {selectedDay.items.map(w => (
                     <div key={w.id} style={{ padding: '10px 12px', background: 'var(--surface-hover)', borderRadius: '8px', fontSize: '13px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
-                        <span>{WorkoutService.getTypeIcon(w.workoutType)}</span>
-                        <span>{w.workoutType}</span>
+                        <span style={{ fontSize: '18px' }}>{WorkoutService.getTypeIcon(w.workoutType)}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{w.title || w.workoutType}</span>
                         <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#60a5fa' }}>{w.duration} мин</span>
                       </div>
-                      {w.notes && <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>{w.notes}</div>}
-                      <div style={{ fontSize: '11px', color: '#5aaa6f', marginTop: '4px', fontWeight: 600 }}>⚡ +{w.xp} XP</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-soft)', marginTop: '4px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <span>Категория: {w.workoutType}</span>
+                        <span style={{ color: '#5aaa6f', fontWeight: 600 }}>⚡ +{w.xp} XP</span>
+                      </div>
+                      {w.notes && <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px', fontStyle: 'italic' }}>{w.notes}</div>}
                     </div>
                   ))}
                 </div>

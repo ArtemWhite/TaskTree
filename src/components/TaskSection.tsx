@@ -19,6 +19,7 @@ interface Props {
   editingTask: Task | null;
   setEditingTask: (t: Task | null) => void;
   highlightTaskId?: string | null;
+  onClearHighlight?: () => void;
 }
 
 const DIFFICULTY_XP: Record<Difficulty, number> = { easy: 20, medium: 50, hard: 100 };
@@ -27,7 +28,7 @@ const EMOJI_LIST = ['🧠','🏋️','📚','💻','🎨','🎵','🍳','🏃','
 export default function TaskSection({
   tasks, completedTasks, categories, onAdd, onUpdate, onDelete, onComplete, onUncomplete,
   onAddCategory, onUpdateCategory, onDeleteCategory, onStartPomodoro, editingTask, setEditingTask,
-  highlightTaskId
+  highlightTaskId, onClearHighlight
 }: Props) {
   const [subtab, setSubtab] = useState<'active' | 'completed' | 'categories'>('active');
   const [showForm, setShowForm] = useState(false);
@@ -47,6 +48,8 @@ export default function TaskSection({
   const [catColor, setCatColor] = useState('#ffffff');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [editCatId, setEditCatId] = useState<string | null>(null);
+  const [editCatName, setEditCatName] = useState('');
+  const [editCatColor, setEditCatColor] = useState('#ffffff');
 
   // Filter state
   const [filterCategory, setFilterCategory] = useState('all');
@@ -66,9 +69,11 @@ export default function TaskSection({
           el.classList.add('highlight-pulse');
           setTimeout(() => el.classList.remove('highlight-pulse'), 2500);
         }
+        // Clear highlight so it doesn't re-trigger on next tab switch
+        onClearHighlight?.();
       }, 100);
     }
-  }, [highlightTaskId]);
+  }, [highlightTaskId, onClearHighlight]);
 
   const filteredTasks = useMemo(() => {
     let list = subtab === 'active' ? tasks : completedTasks;
@@ -215,8 +220,33 @@ export default function TaskSection({
               <div key={c.id} className="card-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: `4px solid ${c.color}` }}>
                 {editCatId === c.id ? (
                   <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
-                    <input className="input-spacex" type="text" defaultValue={c.name} onBlur={e => { onUpdateCategory(c.id, { name: e.target.value }); setEditCatId(null); }} autoFocus style={{ flex: 1 }} />
-                    <input type="color" defaultValue={c.color} onChange={e => onUpdateCategory(c.id, { color: e.target.value })} style={{ width: '32px', height: '32px', border: 'none', background: 'transparent' }} />
+                    <input
+                      className="input-spacex"
+                      type="text"
+                      value={editCatName}
+                      onChange={e => setEditCatName(e.target.value)}
+                      style={{ flex: 1, padding: '6px 10px', fontSize: '13px' }}
+                      autoFocus
+                    />
+                    <input
+                      type="color"
+                      value={editCatColor}
+                      onChange={e => setEditCatColor(e.target.value)}
+                      style={{ width: '36px', height: '36px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                      title="Изменить цвет"
+                    />
+                    <button
+                      className="btn-ghost btn-ghost-xs"
+                      onClick={() => {
+                        if (editCatName.trim()) {
+                          onUpdateCategory(c.id, { name: editCatName.trim(), color: editCatColor });
+                        }
+                        setEditCatId(null);
+                      }}
+                    >
+                      💾
+                    </button>
+                    <button className="btn-ghost btn-ghost-xs" onClick={() => setEditCatId(null)}>✕</button>
                   </div>
                 ) : (
                   <>
@@ -225,7 +255,16 @@ export default function TaskSection({
                       <span style={{ fontWeight: 700 }}>{c.name}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn-ghost btn-ghost-xs" onClick={() => setEditCatId(c.id)}>✏️</button>
+                      <button
+                        className="btn-ghost btn-ghost-xs"
+                        onClick={() => {
+                          setEditCatId(c.id);
+                          setEditCatName(c.name);
+                          setEditCatColor(c.color || '#ffffff');
+                        }}
+                      >
+                        ✏️
+                      </button>
                       <button className="btn-ghost btn-ghost-xs" style={{ color: '#ff6b6b' }} onClick={() => onDeleteCategory(c.id)}>🗑️</button>
                     </div>
                   </>

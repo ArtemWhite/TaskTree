@@ -104,6 +104,7 @@ export default function App() {
               editingTask={editingTask}
               setEditingTask={setEditingTask}
               highlightTaskId={highlightTaskId}
+              onClearHighlight={() => setHighlightTaskId(null)}
             />
           )}
           {activeTab === 'sports' && (
@@ -157,7 +158,6 @@ export default function App() {
               {calendarView === 'tasks' && (
                 <TaskCalendar
                   tasks={activeTasks}
-                  completedTasks={completedTasks}
                   categories={data.categories}
                   onComplete={completeTask}
                   onDelete={deleteTask}
