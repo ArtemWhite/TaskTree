@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@theme {
+:root {
   --font-din: "D-DIN", "Inter", "Arial", "Verdana", sans-serif;
   --font-din-bold: "D-DIN-Bold", "Inter", "Arial Narrow", "Arial", sans-serif;
 
