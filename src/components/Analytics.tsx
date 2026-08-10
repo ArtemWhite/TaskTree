@@ -295,8 +295,9 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
         ))}
       </div>
 
-      {analyticsTab === 'tasks' && (
-        <>
+      <div key={analyticsTab} className="tab-fade-in">
+        {analyticsTab === 'tasks' && (
+          <>
           {/* Chart type toggle */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="micro-cap" style={{ fontSize: '10px', marginRight: '8px' }}>ТИП ГРАФИКА:</span>
@@ -551,6 +552,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
           </div>
         </>
       )}
+      </div>
 
       {popupData && (
         <div className="modal-overlay" onClick={closePopup}>

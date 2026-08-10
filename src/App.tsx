@@ -357,96 +357,98 @@ export default function App() {
 
       {/* MAIN CONTENT */}
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
-        {activeTab === 'tasks' && (
-          <TaskSection
-            tasks={activeTasks}
-            completedTasks={completedTasks}
-            categories={data.categories}
-            onAdd={addTask}
-            onUpdate={updateTask}
-            onDelete={deleteTask}
-            onComplete={completeTask}
-            onUncomplete={uncompleteTask}
-            onAddCategory={addCategory}
-            onUpdateCategory={updateCategory}
-            onDeleteCategory={deleteCategory}
-            onStartPomodoro={setPomodoroTask}
-            editingTask={editingTask}
-            setEditingTask={setEditingTask}
-          />
-        )}
-        {activeTab === 'sports' && (
-          <SportsSection
-            workouts={data.workouts || []}
-            onAdd={addWorkout}
-            onUpdate={updateWorkout}
-            onDelete={deleteWorkout}
-            onComplete={completeWorkout}
-            onUncomplete={uncompleteWorkout}
-            onRenameWorkoutType={renameWorkoutType}
-          />
-        )}
-        {activeTab === 'books' && (
-          <BooksSection
-            books={data.books || []}
-            onAdd={addBook}
-            onUpdate={updateBook}
-            onDelete={deleteBook}
-          />
-        )}
-        {activeTab === 'progress' && (
-          <section>
-            <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>ПРОГРЕСС</h2>
-            <ProgressSection
-              totalXP={totalXP} treeStage={treeStage} levelInfo={levelInfo}
-              activeCount={activeTasks.length} completedCount={completedTasks.length}
-              pomodoroSessions={data.pomodoroHistory.length}
-              workoutsCount={(data.workouts || []).filter(w => w.completed).length}
-              workoutsDuration={(data.workouts || []).filter(w => w.completed).reduce((s, w) => s + w.duration, 0)}
-              booksCount={(data.books || []).filter(b => b.status === 'completed').length}
-              booksPages={(data.books || []).filter(b => b.status === 'completed').reduce((s, b) => s + b.totalPages, 0)}
-              large sideLayout treeSize={480} zoom={1}
+        <div key={activeTab} className="tab-fade-in">
+          {activeTab === 'tasks' && (
+            <TaskSection
+              tasks={activeTasks}
+              completedTasks={completedTasks}
+              categories={data.categories}
+              onAdd={addTask}
+              onUpdate={updateTask}
+              onDelete={deleteTask}
+              onComplete={completeTask}
+              onUncomplete={uncompleteTask}
+              onAddCategory={addCategory}
+              onUpdateCategory={updateCategory}
+              onDeleteCategory={deleteCategory}
+              onStartPomodoro={setPomodoroTask}
+              editingTask={editingTask}
+              setEditingTask={setEditingTask}
             />
-          </section>
-        )}
-        {activeTab === 'calendar' && (
-          <section>
-            <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>КАЛЕНДАРЬ</h2>
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
-              <button className={`tab-btn ${calendarView === 'heatmap' ? 'active' : ''}`} onClick={() => setCalendarView('heatmap')}>🔥 ИСТОРИЯ</button>
-              <button className={`tab-btn ${calendarView === 'tasks' ? 'active' : ''}`} onClick={() => setCalendarView('tasks')}>📋 ЗАДАЧИ</button>
-              <button className={`tab-btn ${calendarView === 'workouts' ? 'active' : ''}`} onClick={() => setCalendarView('workouts')}>🏋️ ТРЕНИРОВКИ</button>
-            </div>
-            {calendarView === 'heatmap' && <CalendarHeatmap completedDays={completedDays} />}
-            {calendarView === 'tasks' && (
-              <TaskCalendar
-                tasks={activeTasks}
-                completedTasks={completedTasks}
-                categories={data.categories}
-                onComplete={completeTask}
-                onDelete={deleteTask}
-                onStartPomodoro={setPomodoroTask}
+          )}
+          {activeTab === 'sports' && (
+            <SportsSection
+              workouts={data.workouts || []}
+              onAdd={addWorkout}
+              onUpdate={updateWorkout}
+              onDelete={deleteWorkout}
+              onComplete={completeWorkout}
+              onUncomplete={uncompleteWorkout}
+              onRenameWorkoutType={renameWorkoutType}
+            />
+          )}
+          {activeTab === 'books' && (
+            <BooksSection
+              books={data.books || []}
+              onAdd={addBook}
+              onUpdate={updateBook}
+              onDelete={deleteBook}
+            />
+          )}
+          {activeTab === 'progress' && (
+            <section>
+              <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>ПРОГРЕСС</h2>
+              <ProgressSection
+                totalXP={totalXP} treeStage={treeStage} levelInfo={levelInfo}
+                activeCount={activeTasks.length} completedCount={completedTasks.length}
+                pomodoroSessions={data.pomodoroHistory.length}
+                workoutsCount={(data.workouts || []).filter(w => w.completed).length}
+                workoutsDuration={(data.workouts || []).filter(w => w.completed).reduce((s, w) => s + w.duration, 0)}
+                booksCount={(data.books || []).filter(b => b.status === 'completed').length}
+                booksPages={(data.books || []).filter(b => b.status === 'completed').reduce((s, b) => s + b.totalPages, 0)}
+                large sideLayout treeSize={480} zoom={1}
               />
-            )}
-            {calendarView === 'workouts' && <WorkoutCalendar workouts={data.workouts || []} />}
-          </section>
-        )}
-        {activeTab === 'analytics' && (
-          <Analytics
-            tasks={data.tasks}
-            pomodoroHistory={data.pomodoroHistory}
-            categories={data.categories}
-            workouts={data.workouts || []}
-          />
-        )}
-        {activeTab === 'tables' && (
-          <SummaryTables
-            tasks={data.tasks}
-            categories={data.categories}
-            pomodoroHistory={data.pomodoroHistory}
-            workouts={data.workouts || []}
-          />
-        )}
+            </section>
+          )}
+          {activeTab === 'calendar' && (
+            <section>
+              <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>КАЛЕНДАРЬ</h2>
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
+                <button className={`tab-btn ${calendarView === 'heatmap' ? 'active' : ''}`} onClick={() => setCalendarView('heatmap')}>🔥 ИСТОРИЯ</button>
+                <button className={`tab-btn ${calendarView === 'tasks' ? 'active' : ''}`} onClick={() => setCalendarView('tasks')}>📋 ЗАДАЧИ</button>
+                <button className={`tab-btn ${calendarView === 'workouts' ? 'active' : ''}`} onClick={() => setCalendarView('workouts')}>🏋️ ТРЕНИРОВКИ</button>
+              </div>
+              {calendarView === 'heatmap' && <CalendarHeatmap completedDays={completedDays} />}
+              {calendarView === 'tasks' && (
+                <TaskCalendar
+                  tasks={activeTasks}
+                  completedTasks={completedTasks}
+                  categories={data.categories}
+                  onComplete={completeTask}
+                  onDelete={deleteTask}
+                  onStartPomodoro={setPomodoroTask}
+                />
+              )}
+              {calendarView === 'workouts' && <WorkoutCalendar workouts={data.workouts || []} />}
+            </section>
+          )}
+          {activeTab === 'analytics' && (
+            <Analytics
+              tasks={data.tasks}
+              pomodoroHistory={data.pomodoroHistory}
+              categories={data.categories}
+              workouts={data.workouts || []}
+            />
+          )}
+          {activeTab === 'tables' && (
+            <SummaryTables
+              tasks={data.tasks}
+              categories={data.categories}
+              pomodoroHistory={data.pomodoroHistory}
+              workouts={data.workouts || []}
+            />
+          )}
+        </div>
       </main>
 
       {/* FOOTER */}
