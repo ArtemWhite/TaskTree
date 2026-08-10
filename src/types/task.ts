@@ -3,13 +3,15 @@ import type { Difficulty, Priority } from './enums';
 export interface Category {
   id: string;
   name: string;
-  emoji: string;
+  emoji?: string;
+  icon?: string;
   color: string;
 }
 
 export interface Task {
   id: string;
   title: string;
+  description?: string;
   categoryId: string;
   difficulty: Difficulty;
   priority?: Priority;

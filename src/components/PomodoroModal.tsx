@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Task, AppSettings } from '../types';
+import { PomodoroEngine } from '../services/PomodoroEngine';
 
 interface Props {
   task: Task;
@@ -45,13 +46,14 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
         setIsFinished(true);
         setEndTime(null);
         setPausedRemainingMs(0);
+        PomodoroEngine.playCompletionAudio(task.title);
         onSessionFinished(minimizedRef.current, settings.pomodoroBonusXP);
         if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       }
     }, 50);
 
     return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
-  }, [isRunning, endTime, settings.pomodoroBonusXP, onSessionFinished]);
+  }, [isRunning, endTime, settings.pomodoroBonusXP, task.title, onSessionFinished]);
 
   const isRunningRef = useRef(isRunning);
   useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
@@ -105,10 +107,8 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
     setEndTime(null);
   };
 
-  const displaySec = Math.ceil(remainingMs / 1000);
-  const minutes = Math.floor(displaySec / 60);
-  const seconds = displaySec % 60;
-  const progress = isFinished ? 1 : Math.min(1, Math.max(0, 1 - remainingMs / totalMs));
+  const progress = PomodoroEngine.calculateProgress(remainingMs, totalMs, isFinished);
+  const timeDisplay = PomodoroEngine.formatTimeDisplay(remainingMs);
 
   const handleClose = () => {
     setMinimized(false);
@@ -120,8 +120,6 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
   const applyCustom = () => {
     onUpdateSettings({ pomodoroWorkMinutes: Math.max(1, Math.min(120, customMin)), pomodoroBonusXP: Math.max(1, Math.min(100, customXP)) });
   };
-
-  const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   // Minimized floating widget
   if (minimized) {
