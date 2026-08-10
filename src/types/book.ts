@@ -13,3 +13,12 @@ export interface Book {
   completedAt: string | null;
   xp: number;
 }
+
+export interface BookStats {
+  total: number;
+  completed: number;
+  inProgress: number;
+  planned: number;
+  totalPagesRead: number;
+  totalXP: number;
+}

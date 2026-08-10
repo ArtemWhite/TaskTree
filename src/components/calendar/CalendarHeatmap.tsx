@@ -1,21 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { CompletedDay } from '../../types';
+import { CalendarService, type BaseCalendarCell } from '../../services/CalendarService';
 
 interface Props { completedDays: CompletedDay[]; }
 
-interface DayCell { day: number; date: string; count: number; level: number; }
-interface MonthGridData { name: string; month: number; cells: DayCell[]; }
-
-const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
-function getLevel(count: number): number {
-  if (count >= 5) return 4;
-  if (count >= 3) return 3;
-  if (count >= 2) return 2;
-  if (count >= 1) return 1;
-  return 0;
-}
+interface DayCell extends BaseCalendarCell { day: number; date: string; count: number; level: number; }
 
 function getHeatmapStyle(level: number, isSelected: boolean) {
   if (isSelected) {
@@ -42,36 +31,6 @@ function getHeatmapStyle(level: number, isSelected: boolean) {
   }
 }
 
-function build7ColumnYearGrid(year: number, dayMap: Record<string, CompletedDay>): MonthGridData[] {
-  return Array.from({ length: 12 }, (_, month) => {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    // Monday = 0, Sunday = 6
-    const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
-    const cells: DayCell[] = [];
-
-    // Empty offset cells before day 1
-    for (let i = 0; i < firstDayIndex; i++) {
-      cells.push({ day: 0, date: '', count: 0, level: -1 });
-    }
-
-    // Actual days of month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
-      const cd = dayMap[dateStr];
-      const count = cd ? cd.count : 0;
-      cells.push({ day, date: dateStr, count, level: getLevel(count) });
-    }
-
-    // Always pad to 42 cells (6 rows * 7 columns) for uniform card height
-    while (cells.length < 42) {
-      cells.push({ day: 0, date: '', count: 0, level: -1 });
-    }
-
-    return { name: MONTH_NAMES[month], month, cells };
-  });
-}
-
 export default function CalendarHeatmap({ completedDays }: Props) {
   const [selectedDay, setSelectedDay] = useState<CompletedDay | null>(null);
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
@@ -79,7 +38,16 @@ export default function CalendarHeatmap({ completedDays }: Props) {
   const months = useMemo(() => {
     const dayMap: Record<string, CompletedDay> = {};
     completedDays.forEach(cd => { dayMap[cd.date] = cd; });
-    return build7ColumnYearGrid(viewYear, dayMap);
+
+    return CalendarService.buildYearGrid<DayCell>(
+      viewYear,
+      (day, dateStr) => {
+        const cd = dayMap[dateStr];
+        const count = cd ? cd.count : 0;
+        return { day, date: dateStr, count, level: CalendarService.getLevel(count) };
+      },
+      () => ({ day: 0, date: '', count: 0, level: -1 })
+    );
   }, [completedDays, viewYear]);
 
   return (
@@ -102,14 +70,14 @@ export default function CalendarHeatmap({ completedDays }: Props) {
 
             {/* Weekdays Header */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px', textAlign: 'center' }}>
-              {WEEKDAYS.map((wd, i) => (
+              {CalendarService.WEEKDAYS.map((wd, i) => (
                 <div key={wd} style={{ fontSize: '10px', color: i >= 5 ? '#ff9f43' : 'var(--text-muted)', fontWeight: 600 }}>
                   {wd}
                 </div>
               ))}
             </div>
 
-            {/* 7-Column Days Grid (6 uniform rows) */}
+            {/* 7-Column Days Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
               {m.cells.map((cell, ci) => {
                 if (cell.level === -1) {

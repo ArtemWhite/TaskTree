@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Task, Category, AppData, PomodoroSession, CompletedDay, Workout, Book } from '../types';
-import { StorageService } from '../services/StorageService';
+import type { Task, Category, AppData, CompletedDay, Workout, Book } from '../types';
+import { AppDataManager } from '../services/AppDataManager';
 import { XPService } from '../services/XPService';
-import { TaskService } from '../services/TaskService';
 
 export function useAppData() {
-  const [data, setData] = useState<AppData>(StorageService.loadAppData);
+  const [data, setData] = useState<AppData>(AppDataManager.load);
 
   useEffect(() => {
-    StorageService.saveAppData(data);
+    AppDataManager.save(data);
   }, [data]);
 
   const totalXP = useMemo(() => XPService.calculateTotalXP(data), [data]);
@@ -17,165 +16,89 @@ export function useAppData() {
 
   // Tasks CRUD
   const addTask = useCallback((task: Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'>) => {
-    const newTask: Task = {
-      ...task, id: TaskService.generateId(), completed: false,
-      completedDate: null, pomodoroCount: 0, createdAt: new Date().toISOString(), deadline: task.deadline || null
-    };
-    setData(d => ({ ...d, tasks: [...d.tasks, newTask] }));
+    setData(d => AppDataManager.addTask(d, task));
   }, []);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    setData(d => ({ ...d, tasks: d.tasks.map(t => t.id === id ? { ...t, ...updates } : t) }));
+    setData(d => AppDataManager.updateTask(d, id, updates));
   }, []);
 
   const deleteTask = useCallback((id: string) => {
-    setData(d => ({ ...d, tasks: d.tasks.filter(t => t.id !== id) }));
+    setData(d => AppDataManager.deleteTask(d, id));
   }, []);
 
   const completeTask = useCallback((id: string) => {
-    setData(d => ({
-      ...d, tasks: d.tasks.map(t =>
-        t.id === id ? { ...t, completed: true, completedDate: new Date().toISOString() } : t
-      )
-    }));
+    setData(d => AppDataManager.completeTask(d, id));
   }, []);
 
   const uncompleteTask = useCallback((id: string) => {
-    setData(d => ({
-      ...d, tasks: d.tasks.map(t =>
-        t.id === id ? { ...t, completed: false, completedDate: null } : t
-      )
-    }));
+    setData(d => AppDataManager.uncompleteTask(d, id));
   }, []);
 
   // Categories CRUD
   const addCategory = useCallback((cat: Omit<Category, 'id'>) => {
-    const newCat: Category = { ...cat, id: 'cat-' + TaskService.generateId() };
-    setData(d => ({ ...d, categories: [...d.categories, newCat] }));
+    setData(d => AppDataManager.addCategory(d, cat));
   }, []);
 
   const updateCategory = useCallback((id: string, updates: Partial<Category>) => {
-    setData(d => ({ ...d, categories: d.categories.map(c => c.id === id ? { ...c, ...updates } : c) }));
+    setData(d => AppDataManager.updateCategory(d, id, updates));
   }, []);
 
   const deleteCategory = useCallback((id: string) => {
-    setData(d => ({
-      ...d,
-      categories: d.categories.filter(c => c.id !== id),
-      tasks: d.tasks.map(t => t.categoryId === id ? { ...t, categoryId: d.categories[0]?.id || '' } : t)
-    }));
+    setData(d => AppDataManager.deleteCategory(d, id));
   }, []);
 
   // Pomodoro
   const completePomodoro = useCallback((taskId: string, xpEarned: number) => {
-    setData(d => {
-      const task = d.tasks.find(t => t.id === taskId);
-      const taskTitle = task ? task.title : 'Задача';
-      const newSession: PomodoroSession = {
-        id: TaskService.generateId(), taskId, taskTitle,
-        completedAt: new Date().toISOString(), xpEarned
-      };
-      return {
-        ...d,
-        pomodoroHistory: [...d.pomodoroHistory, newSession],
-        tasks: d.tasks.map(t => t.id === taskId ? { ...t, pomodoroCount: (t.pomodoroCount || 0) + 1 } : t)
-      };
-    });
+    setData(d => AppDataManager.completePomodoro(d, taskId, xpEarned));
   }, []);
 
   // Workouts CRUD
   const addWorkout = useCallback((workout: Omit<Workout, 'id' | 'createdAt'>) => {
-    const newW: Workout = {
-      ...workout, id: 'w-' + TaskService.generateId(), createdAt: new Date().toISOString()
-    };
-    setData(d => ({ ...d, workouts: [...(d.workouts || []), newW] }));
+    setData(d => AppDataManager.addWorkout(d, workout));
   }, []);
 
   const updateWorkout = useCallback((id: string, updates: Partial<Workout>) => {
-    setData(d => ({ ...d, workouts: (d.workouts || []).map(w => w.id === id ? { ...w, ...updates } : w) }));
+    setData(d => AppDataManager.updateWorkout(d, id, updates));
   }, []);
 
   const deleteWorkout = useCallback((id: string) => {
-    setData(d => ({ ...d, workouts: (d.workouts || []).filter(w => w.id !== id) }));
+    setData(d => AppDataManager.deleteWorkout(d, id));
   }, []);
 
   const completeWorkout = useCallback((id: string) => {
-    setData(d => ({
-      ...d, workouts: (d.workouts || []).map(w => w.id === id ? { ...w, completed: true } : w)
-    }));
+    setData(d => AppDataManager.completeWorkout(d, id));
   }, []);
 
   const uncompleteWorkout = useCallback((id: string) => {
-    setData(d => ({
-      ...d, workouts: (d.workouts || []).map(w => w.id === id ? { ...w, completed: false } : w)
-    }));
+    setData(d => AppDataManager.uncompleteWorkout(d, id));
   }, []);
 
   const renameWorkoutType = useCallback((oldName: string, newName: string) => {
-    setData(d => ({
-      ...d,
-      workouts: (d.workouts || []).map(w => w.workoutType === oldName ? { ...w, workoutType: newName } : w)
-    }));
+    setData(d => AppDataManager.renameWorkoutType(d, oldName, newName));
   }, []);
 
   // Books CRUD
   const addBook = useCallback((book: Omit<Book, 'id' | 'createdAt' | 'completedAt' | 'xp'>) => {
-    const xpEarned = book.status === 'completed' ? Math.round(book.totalPages * 0.5) : 0;
-    const newB: Book = {
-      ...book,
-      id: 'b-' + TaskService.generateId(),
-      createdAt: new Date().toISOString(),
-      completedAt: book.status === 'completed' ? new Date().toISOString() : null,
-      xp: xpEarned
-    };
-    setData(d => ({ ...d, books: [...(d.books || []), newB] }));
+    setData(d => AppDataManager.addBook(d, book));
   }, []);
 
   const updateBook = useCallback((id: string, updates: Partial<Book>) => {
-    setData(d => ({
-      ...d,
-      books: (d.books || []).map(b => {
-        if (b.id !== id) return b;
-        const nextStatus = updates.status !== undefined ? updates.status : b.status;
-        const nextPages = updates.totalPages !== undefined ? updates.totalPages : b.totalPages;
-        const wasCompleted = b.status === 'completed';
-        const isCompleted = nextStatus === 'completed';
-        let xp = b.xp;
-        let completedAt = b.completedAt;
-        if (!wasCompleted && isCompleted) {
-          xp = Math.round(nextPages * 0.5);
-          completedAt = new Date().toISOString();
-        } else if (wasCompleted && !isCompleted) {
-          xp = 0;
-          completedAt = null;
-        } else if (isCompleted && updates.totalPages !== undefined) {
-          xp = Math.round(nextPages * 0.5);
-        }
-        return { ...b, ...updates, xp, completedAt };
-      })
-    }));
+    setData(d => AppDataManager.updateBook(d, id, updates));
   }, []);
 
   const deleteBook = useCallback((id: string) => {
-    setData(d => ({ ...d, books: (d.books || []).filter(b => b.id !== id) }));
+    setData(d => AppDataManager.deleteBook(d, id));
   }, []);
 
   // Data Import
   const importData = useCallback((json: string): boolean => {
-    try {
-      const newData: AppData = JSON.parse(json);
-      setData({
-        tasks: newData.tasks || [],
-        categories: newData.categories || StorageService.DEFAULT_CATEGORIES,
-        pomodoroHistory: newData.pomodoroHistory || [],
-        settings: newData.settings || StorageService.DEFAULT_SETTINGS,
-        workouts: newData.workouts || [],
-        books: newData.books || []
-      });
+    const parsed = AppDataManager.parseImport(json);
+    if (parsed) {
+      setData(parsed);
       return true;
-    } catch {
-      return false;
     }
+    return false;
   }, []);
 
   const activeTasks = useMemo(() => data.tasks.filter(t => !t.completed), [data.tasks]);
