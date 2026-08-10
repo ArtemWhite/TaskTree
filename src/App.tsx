@@ -418,11 +418,10 @@ export default function App() {
           settings={data.settings}
           onClose={() => setPomodoroTask(null)}
           onUpdateSettings={s => setData(d => ({ ...d, settings: { ...d.settings, ...s } }))}
-          onSessionFinished={(wasMinimized, xp) => {
+          onSessionFinished={(_wasMinimized, xp) => {
             completePomodoro(pomodoroTask.id, xp);
-            if (wasMinimized) {
-              setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp });
-            }
+            setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp });
+            setPomodoroTask(null);
           }}
           restoreSignal={pomodoroRestoreSignal}
         />
@@ -452,18 +451,15 @@ export default function App() {
       {pomodoroCompleteToast && (
         <div
           style={{
-            position: 'fixed', bottom: '32px', left: '32px', zIndex: 200,
+            position: 'fixed', bottom: levelUpToast ? '140px' : '32px', right: '32px', zIndex: 200,
             background: 'var(--bg-secondary)', border: '1px solid #5aaa6f',
             borderRadius: '16px', padding: '20px 24px', maxWidth: '380px',
             boxShadow: '0 12px 40px rgba(0,0,0,0.6)', cursor: 'pointer',
             animation: 'grow 0.4s ease-out'
           }}
           onClick={() => {
-            if (!pomodoroTask) {
-              const t = data.tasks.find(t => t.id === pomodoroCompleteToast.taskId);
-              if (t) setPomodoroTask(t);
-            }
-            setPomodoroRestoreSignal(s => s + 1);
+            const t = data.tasks.find(t => t.id === pomodoroCompleteToast.taskId);
+            if (t) setPomodoroTask(t);
             setPomodoroCompleteToast(null);
           }}
         >
