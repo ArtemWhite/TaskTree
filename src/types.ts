@@ -12,6 +12,7 @@ export interface Task {
   title: string;
   categoryId: string;
   difficulty: Difficulty;
+  priority?: 'low' | 'medium' | 'high';
   xp: number;
   completed: boolean;
   completedDate: string | null;
@@ -36,6 +37,21 @@ export interface AppData {
   pomodoroHistory: PomodoroSession[];
   settings: AppSettings;
   workouts: Workout[];
+  books?: Book[];
+}
+
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  totalPages: number;
+  readPages: number;
+  status: 'reading' | 'completed' | 'planned';
+  rating: number; // 0 to 5
+  review: string;
+  createdAt: string;
+  completedAt: string | null;
+  xp: number;
 }
 
 export interface Workout {

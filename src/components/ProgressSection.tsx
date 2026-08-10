@@ -10,6 +10,10 @@ interface Props {
   activeCount: number;
   completedCount: number;
   pomodoroSessions: number;
+  workoutsCount?: number;
+  workoutsDuration?: number;
+  booksCount?: number;
+  booksPages?: number;
   large?: boolean;
   zoom?: number;
   sideLayout?: boolean;
@@ -74,7 +78,11 @@ function pseudoRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-export default function ProgressSection({ totalXP, treeStage, levelInfo, activeCount, completedCount, pomodoroSessions, large, zoom = 1, sideLayout, treeSize }: Props) {
+export default function ProgressSection({
+  totalXP, treeStage, levelInfo, activeCount, completedCount, pomodoroSessions,
+  workoutsCount = 0, workoutsDuration = 0, booksCount = 0, booksPages = 0,
+  large, zoom = 1, sideLayout, treeSize
+}: Props) {
   const size = treeSize || (large ? 280 : 160);
   const [viewStage, setViewStage] = useState<number | null>(null);
   const prevTreeStageRef = useRef(treeStage);
@@ -138,10 +146,14 @@ export default function ProgressSection({ totalXP, treeStage, levelInfo, activeC
               <span>{levelInfo.next} XP</span>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '24px', marginTop: '24px' }}>
-            <StatBox label="АКТИВНЫХ" value={activeCount} />
-            <StatBox label="ВЫПОЛНЕНО" value={completedCount} />
+          <div style={{ display: 'flex', gap: '24px', marginTop: '24px', flexWrap: 'wrap' }}>
+            <StatBox label="АКТИВНЫХ ЗАДАЧ" value={activeCount} />
+            <StatBox label="ВЫПОЛНЕНО ЗАДАЧ" value={completedCount} />
             <StatBox label="ПОМОДОРО" value={pomodoroSessions} />
+            <StatBox label="ТРЕНИРОВОК" value={workoutsCount} />
+            <StatBox label="МИН. СПОРТА" value={workoutsDuration} />
+            <StatBox label="ПРОЧИТАНО КНИГ" value={booksCount} />
+            <StatBox label="СТРАНИЦ" value={booksPages} />
           </div>
         </div>
 
@@ -204,10 +216,14 @@ export default function ProgressSection({ totalXP, treeStage, levelInfo, activeC
           </div>
         </div>
         {large && (
-          <div style={{ display: 'flex', gap: '24px', marginTop: '24px', justifyContent: 'center' }}>
-            <StatBox label="АКТИВНЫХ" value={activeCount} />
-            <StatBox label="ВЫПОЛНЕНО" value={completedCount} />
+          <div style={{ display: 'flex', gap: '24px', marginTop: '24px', justifyContent: 'center', flexWrap: 'wrap', maxWidth: '600px' }}>
+            <StatBox label="АКТИВНЫХ ЗАДАЧ" value={activeCount} />
+            <StatBox label="ВЫПОЛНЕНО ЗАДАЧ" value={completedCount} />
             <StatBox label="ПОМОДОРО" value={pomodoroSessions} />
+            <StatBox label="ТРЕНИРОВОК" value={workoutsCount} />
+            <StatBox label="МИН. СПОРТА" value={workoutsDuration} />
+            <StatBox label="ПРОЧИТАНО КНИГ" value={booksCount} />
+            <StatBox label="СТРАНИЦ" value={booksPages} />
           </div>
         )}
       </div>

@@ -206,16 +206,15 @@ export default function SportsSection({ workouts, onAdd, onUpdate, onDelete, onC
 
   function startEdit(w: Workout) {
     setEditingId(w.id);
-    const isCustom = savedCustomTypes.some(t => t.name === w.workoutType) || (!isBuiltInType(w.workoutType) && !allWorkoutTypes.some(t => t.name === w.workoutType));
-    if (isCustom && !isBuiltInType(w.workoutType)) {
-      setForm({ title: w.title, workoutType: 'custom', date: w.date, duration: w.duration, notes: w.notes });
-      setCustomType(w.workoutType);
-      const def = allWorkoutTypes.find(t => t.name === w.workoutType);
-      setFormCustomIcon(def?.icon || '⭐');
-      setFormCustomColor(def?.color || '#3b82c4');
-    } else {
+    const isKnownType = allWorkoutTypes.some(t => t.name === w.workoutType);
+    if (isKnownType) {
       setForm({ title: w.title, workoutType: w.workoutType, date: w.date, duration: w.duration, notes: w.notes });
       setCustomType('');
+    } else {
+      setForm({ title: w.title, workoutType: 'custom', date: w.date, duration: w.duration, notes: w.notes });
+      setCustomType(w.workoutType);
+      setFormCustomIcon('⭐');
+      setFormCustomColor('#3b82c4');
     }
   }
 

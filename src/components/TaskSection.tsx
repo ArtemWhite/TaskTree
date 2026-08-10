@@ -33,6 +33,7 @@ export default function TaskSection({
   const [title, setTitle] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id || '');
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [xp, setXp] = useState(50);
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('');
@@ -49,8 +50,9 @@ export default function TaskSection({
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'createdAt' | 'deadline' | 'title' | 'createdAt+deadline'>('createdAt');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'deadline' | 'title' | 'createdAt+deadline' | 'priority'>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [groupByDate, setGroupByDate] = useState(false);
 
   const filteredTasks = useMemo(() => {
     let list = subtab === 'active' ? tasks : completedTasks;
@@ -73,6 +75,13 @@ export default function TaskSection({
         if (dlCmp !== 0) return dlCmp;
         return dir * a.createdAt.localeCompare(b.createdAt);
       }
+      if (sortBy === 'priority') {
+        const pMap = { low: 1, medium: 2, high: 3 };
+        const pA = pMap[a.priority || 'medium'];
+        const pB = pMap[b.priority || 'medium'];
+        if (pA !== pB) return dir * (pA - pB);
+        return dir * a.createdAt.localeCompare(b.createdAt);
+      }
       return dir * a.createdAt.localeCompare(b.createdAt);
     });
   }, [tasks, completedTasks, filterCategory, filterDifficulty, searchTerm, subtab, sortBy, sortDir]);
@@ -81,6 +90,7 @@ export default function TaskSection({
     setTitle('');
     setCategoryId(categories[0]?.id || '');
     setDifficulty('medium');
+    setPriority('medium');
     setXp(50);
     setDeadlineDate('');
     setDeadlineTime('');
@@ -92,9 +102,9 @@ export default function TaskSection({
     if (!title.trim()) return;
     const deadline = deadlineDate ? `${deadlineDate}T${deadlineTime || '23:59'}:00` : null;
     if (editingTask) {
-      onUpdate(editingTask.id, { title: title.trim(), categoryId, difficulty, xp, deadline });
+      onUpdate(editingTask.id, { title: title.trim(), categoryId, difficulty, priority, xp, deadline });
     } else {
-      onAdd({ title: title.trim(), categoryId, difficulty, xp, deadline });
+      onAdd({ title: title.trim(), categoryId, difficulty, priority, xp, deadline });
     }
     resetForm();
   };
@@ -104,6 +114,7 @@ export default function TaskSection({
     setTitle(t.title);
     setCategoryId(t.categoryId);
     setDifficulty(t.difficulty);
+    setPriority(t.priority || 'medium');
     setXp(t.xp);
     if (t.deadline) {
       setDeadlineDate(t.deadline.slice(0, 10));
@@ -244,11 +255,15 @@ export default function TaskSection({
               <option value="createdAt">По созданию</option>
               <option value="deadline">По дедлайну</option>
               <option value="title">По названию</option>
+              <option value="priority">По приоритету</option>
               <option value="createdAt+deadline">По дедлайну и дате</option>
             </select>
             <button className="btn-ghost btn-ghost-xs" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
               title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}>
               {sortDir === 'asc' ? '↑' : '↓'}
+            </button>
+            <button className={`btn-ghost btn-ghost-xs ${groupByDate ? 'active' : ''}`} onClick={() => setGroupByDate(!groupByDate)}>
+              ГРУППИРОВКА: {groupByDate ? 'ПО ДНЯМ' : 'НЕТ'}
             </button>
             {subtab === 'active' && (
               <button className="btn-ghost" onClick={() => { resetForm(); setShowForm(true); }}>
@@ -260,7 +275,7 @@ export default function TaskSection({
           {/* Task Form Modal */}
           {showForm && (
             <div className="modal-overlay" onClick={resetForm}>
-              <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
                 <h3 className="micro-cap" style={{ marginBottom: '20px' }}>
                   {editingTask ? 'РЕДАКТИРОВАТЬ ЗАДАЧУ' : 'НОВАЯ ЗАДАЧА'}
                 </h3>
@@ -280,15 +295,11 @@ export default function TaskSection({
                       <option value="medium">Средняя (50 XP)</option>
                       <option value="hard">Сложная (100 XP)</option>
                     </select>
-                    <div className="spin-wrap" style={{ width: '108px' }}>
-                      <input type="number" className="input-spacex spin-input" style={{ textAlign: 'center' }}
-                        value={xp} onChange={e => setXp(Number(e.target.value) || 0)}
-                        placeholder="XP" min={1} max={9999} />
-                      <div className="spin-btns">
-                        <button type="button" className="spin-btn" onClick={() => setXp(x => Math.min(x + 1, 9999))}>▲</button>
-                        <button type="button" className="spin-btn" onClick={() => setXp(x => Math.max(x - 1, 1))}>▼</button>
-                      </div>
-                    </div>
+                    <select className="input-spacex" value={priority} onChange={e => setPriority(e.target.value as 'low'|'medium'|'high')}>
+                      <option value="low">Приоритет: Низкий</option>
+                      <option value="medium">Приоритет: Средний</option>
+                      <option value="high">Приоритет: Высокий</option>
+                    </select>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <div style={{ flex: 1 }}>
@@ -324,78 +335,129 @@ export default function TaskSection({
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {filteredTasks.map(task => {
-                  const cat = categoryMap[task.categoryId];
-                  return (
-                    <div key={task.id} style={{
-                      display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 24px',
-                      borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap', opacity: task.completed ? 0.5 : 1,
-                      transition: 'opacity 0.3s'
-                    }}>
-                      {!task.completed ? (
-                        <button className="checkbox-spacex" onClick={() => onComplete(task.id)}
-                          title="Отметить выполненной" />
-                      ) : (
-                        <button className="checkbox-spacex" style={{ background: '#ffffff' }}
-                          onClick={() => onUncomplete(task.id)} title="Вернуть в активные">
-                          <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000000', fontSize: '12px' }}>✓</span>
-                        </button>
-                      )}
-
-                      <span style={{ fontSize: '20px' }}>{cat?.emoji || '📝'}</span>
-
-                      <div style={{ flex: 1, minWidth: '150px' }}>
-                        <div style={{ fontSize: '14px', textDecoration: task.completed ? 'line-through' : 'none' }}>
-                          {task.title}
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                          <span className="badge">{cat?.name || '—'}</span>
-                          <span className="badge">
-                            {task.difficulty === 'easy' ? 'ЛЁГКАЯ' : task.difficulty === 'medium' ? 'СРЕДНЯЯ' : 'СЛОЖНАЯ'}
-                          </span>
-                          <span className="badge">+{task.xp} XP</span>
-                          {task.pomodoroCount > 0 && (
-                            <span className="badge">🍅 ×{task.pomodoroCount}</span>
-                          )}
-                          {task.deadline && (
-                            <span className="badge" style={(() => {
-                              const deadlineDate = new Date(task.deadline);
-                              const now = new Date();
-                              if (task.completed && task.completedDate) {
-                                const completedDate = new Date(task.completedDate);
-                                const onTime = completedDate <= deadlineDate;
-                                return { borderColor: onTime ? '#5aaa6f' : '#ff6b6b', color: onTime ? '#5aaa6f' : '#ff6b6b' };
-                              }
-                              const overdue = deadlineDate < now;
-                              return { borderColor: overdue ? '#ff6b6b' : '#5aaa6f', color: overdue ? '#ff6b6b' : '#5aaa6f' };
-                            })()}>
-                              ⏰ {new Date(task.deadline).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
-                              {task.deadline.includes('T') && task.deadline.slice(11, 16) !== '23:59' ? ` ${task.deadline.slice(11, 16)}` : ''}
-                            </span>
-                          )}
-                          {task.completed && task.completedDate && (
-                            <span className="badge">
-                              ✓ {new Date(task.completedDate).toLocaleDateString('ru')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {!task.completed && (
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button className="btn-ghost btn-ghost-xs" onClick={() => onStartPomodoro(task)} title="Помодоро-таймер">
-                            🍅
+                {(() => {
+                  const renderTask = (task: Task) => {
+                    const cat = categoryMap[task.categoryId];
+                    return (
+                      <div key={task.id} style={{
+                        display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 24px',
+                        borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap', opacity: task.completed ? 0.5 : 1,
+                        transition: 'opacity 0.3s'
+                      }}>
+                        {!task.completed ? (
+                          <button className="checkbox-spacex" onClick={() => onComplete(task.id)}
+                            title="Отметить выполненной" />
+                        ) : (
+                          <button className="checkbox-spacex" style={{ background: '#ffffff' }}
+                            onClick={() => onUncomplete(task.id)} title="Вернуть в активные">
+                            <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000000', fontSize: '12px' }}>✓</span>
                           </button>
-                          <button className="btn-ghost btn-ghost-xs" onClick={() => startEdit(task)}>РЕД</button>
-                          <button className="btn-ghost btn-ghost-xs" onClick={() => onDelete(task.id)}>УДЛ</button>
+                        )}
+  
+                        <span style={{ fontSize: '20px' }}>{cat?.emoji || '📝'}</span>
+  
+                        <div style={{ flex: 1, minWidth: '150px' }}>
+                          <div style={{ fontSize: '14px', textDecoration: task.completed ? 'line-through' : 'none' }}>
+                            {task.title}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+                            <span className="badge">{cat?.name || '—'}</span>
+                            <span className="badge">
+                              {task.difficulty === 'easy' ? 'ЛЁГКАЯ' : task.difficulty === 'medium' ? 'СРЕДНЯЯ' : 'СЛОЖНАЯ'}
+                            </span>
+                            {task.priority && (
+                              <span className="badge" style={{
+                                borderColor: task.priority === 'high' ? '#ff6b6b' : task.priority === 'medium' ? '#ffd700' : '#a29bfe',
+                                color: task.priority === 'high' ? '#ff6b6b' : task.priority === 'medium' ? '#ffd700' : '#a29bfe'
+                              }}>
+                                {task.priority === 'high' ? '🔥 ВЫСОКИЙ' : task.priority === 'medium' ? '⭐ СРЕДНИЙ' : '🔽 НИЗКИЙ'}
+                              </span>
+                            )}
+                            <span className="badge">+{task.xp} XP</span>
+                            {task.pomodoroCount > 0 && (
+                              <span className="badge">🍅 ×{task.pomodoroCount}</span>
+                            )}
+                            {task.deadline && (
+                              <span className="badge" style={(() => {
+                                const deadlineDate = new Date(task.deadline);
+                                const now = new Date();
+                                if (task.completed && task.completedDate) {
+                                  const completedDate = new Date(task.completedDate);
+                                  const onTime = completedDate <= deadlineDate;
+                                  return { borderColor: onTime ? '#5aaa6f' : '#ff6b6b', color: onTime ? '#5aaa6f' : '#ff6b6b' };
+                                }
+                                const overdue = deadlineDate < now;
+                                return { borderColor: overdue ? '#ff6b6b' : '#5aaa6f', color: overdue ? '#ff6b6b' : '#5aaa6f' };
+                              })()}>
+                                ⏰ {new Date(task.deadline).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
+                                {task.deadline.includes('T') && task.deadline.slice(11, 16) !== '23:59' ? ` ${task.deadline.slice(11, 16)}` : ''}
+                              </span>
+                            )}
+                            {task.completed && task.completedDate && (
+                              <span className="badge">
+                                ✓ {new Date(task.completedDate).toLocaleDateString('ru')}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      {task.completed && (
-                        <button className="btn-ghost btn-ghost-xs" onClick={() => onDelete(task.id)}>УДЛ</button>
-                      )}
-                    </div>
-                  );
-                })}
+  
+                        {!task.completed && (
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button className="btn-ghost btn-ghost-xs" onClick={() => onStartPomodoro(task)} title="Помодоро-таймер">
+                              🍅
+                            </button>
+                            <button className="btn-ghost btn-ghost-xs" onClick={() => startEdit(task)}>РЕД</button>
+                            <button className="btn-ghost btn-ghost-xs" onClick={() => onDelete(task.id)}>УДЛ</button>
+                          </div>
+                        )}
+                        {task.completed && (
+                          <button className="btn-ghost btn-ghost-xs" onClick={() => onDelete(task.id)}>УДЛ</button>
+                        )}
+                      </div>
+                    );
+                  };
+
+                  if (groupByDate) {
+                    const groups: Record<string, Task[]> = {};
+                    const noDateTasks: Task[] = [];
+                    
+                    filteredTasks.forEach(t => {
+                      const dateField = subtab === 'active' ? t.deadline : t.completedDate;
+                      if (!dateField) {
+                        noDateTasks.push(t);
+                      } else {
+                        const dateStr = dateField.slice(0, 10);
+                        if (!groups[dateStr]) groups[dateStr] = [];
+                        groups[dateStr].push(t);
+                      }
+                    });
+
+                    const sortedDates = Object.keys(groups).sort((a, b) => sortDir === 'asc' ? a.localeCompare(b) : b.localeCompare(a));
+                    
+                    return (
+                      <>
+                        {sortedDates.map(date => (
+                          <div key={date}>
+                            <div style={{ padding: '8px 24px', background: 'var(--surface-hover)', fontSize: '13px', fontWeight: 'bold', borderBottom: '1px solid var(--hairline)' }}>
+                              {new Date(date).toLocaleDateString('ru', { weekday: 'short', day: 'numeric', month: 'long' })}
+                            </div>
+                            {groups[date].map(renderTask)}
+                          </div>
+                        ))}
+                        {noDateTasks.length > 0 && (
+                          <div>
+                            <div style={{ padding: '8px 24px', background: 'var(--surface-hover)', fontSize: '13px', fontWeight: 'bold', borderBottom: '1px solid var(--hairline)' }}>
+                              Без даты
+                            </div>
+                            {noDateTasks.map(renderTask)}
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  return filteredTasks.map(renderTask);
+                })()}
               </div>
             )}
           </div>

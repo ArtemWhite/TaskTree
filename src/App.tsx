@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type {
-  Task, Category, AppData, PomodoroSession, TreeStage, AppSettings, CompletedDay, Workout
+  Task, Category, AppData, PomodoroSession, TreeStage, AppSettings, CompletedDay, Workout, Book
 } from './types';
 import CalendarHeatmap from './components/CalendarHeatmap';
 import TaskSection from './components/TaskSection';
@@ -13,6 +13,7 @@ import SummaryTables from './components/SummaryTables';
 import SportsSection from './components/SportsSection';
 import WorkoutCalendar from './components/WorkoutCalendar';
 import TaskCalendar from './components/TaskCalendar';
+import BooksSection from './components/BooksSection';
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-1', name: 'Работа', emoji: '🧠', color: '#ffffff' },
@@ -28,7 +29,7 @@ function loadData(): AppData {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return { tasks: [], categories: DEFAULT_CATEGORIES, pomodoroHistory: [], settings: DEFAULT_SETTINGS, workouts: [] };
+  return { tasks: [], categories: DEFAULT_CATEGORIES, pomodoroHistory: [], settings: DEFAULT_SETTINGS, workouts: [], books: [] };
 }
 
 function saveData(data: AppData) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
@@ -80,7 +81,8 @@ function getStoredLevel(): number {
   const tXP = d.tasks.filter(t => t.completed).reduce((s, t) => s + t.xp, 0);
   const pXP = d.pomodoroHistory.reduce((s, p) => s + p.xpEarned, 0);
   const wXP = (d.workouts || []).filter(w => w.completed).reduce((s, w) => s + w.xp, 0);
-  return getXPForLevel(tXP + pXP + wXP).level;
+  const bXP = (d.books || []).filter(b => b.status === 'completed').reduce((s, b) => s + b.xp, 0);
+  return getXPForLevel(tXP + pXP + wXP + bXP).level;
 }
 
 export default function App() {
@@ -109,7 +111,8 @@ export default function App() {
     const taskXP = data.tasks.filter(t => t.completed).reduce((s, t) => s + t.xp, 0);
     const pomoXP = data.pomodoroHistory.reduce((s, p) => s + p.xpEarned, 0);
     const workoutXP = (data.workouts || []).filter(w => w.completed).reduce((s, w) => s + w.xp, 0);
-    return taskXP + pomoXP + workoutXP;
+    const bookXP = (data.books || []).filter(b => b.status === 'completed').reduce((s, b) => s + b.xp, 0);
+    return taskXP + pomoXP + workoutXP + bookXP;
   }, [data]);
 
   const levelInfo = getXPForLevel(totalXP);
@@ -236,6 +239,31 @@ export default function App() {
     }));
   }, []);
 
+  const addBook = useCallback((book: Omit<Book, 'id' | 'createdAt' | 'completedAt' | 'xp'>) => {
+    const xp = Math.floor(book.totalPages / 10); // Example: 1 XP per 10 pages
+    const newBook: Book = {
+      ...book, id: generateId(), createdAt: new Date().toISOString(), completedAt: book.status === 'completed' ? new Date().toISOString() : null, xp
+    };
+    setData(d => ({ ...d, books: [...(d.books || []), newBook] }));
+  }, []);
+
+  const updateBook = useCallback((id: string, updates: Partial<Book>) => {
+    setData(d => ({
+      ...d, books: (d.books || []).map(b => {
+        if (b.id !== id) return b;
+        const newStatus = updates.status || b.status;
+        const completedAt = (newStatus === 'completed' && b.status !== 'completed') ? new Date().toISOString() : b.completedAt;
+        const totalPages = updates.totalPages ?? b.totalPages;
+        const xp = Math.floor(totalPages / 10);
+        return { ...b, ...updates, completedAt, xp };
+      })
+    }));
+  }, []);
+
+  const deleteBook = useCallback((id: string) => {
+    setData(d => ({ ...d, books: (d.books || []).filter(b => b.id !== id) }));
+  }, []);
+
   const importData = useCallback((json: string) => {
     try {
       const parsed = JSON.parse(json);
@@ -293,9 +321,9 @@ export default function App() {
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.8px' }}>{totalXP} XP</span>
           </div>
           <div style={{ display: 'flex', gap: '4px' }}>
-            {(['tasks','progress','calendar','analytics','tables'] as const).map(tab => (
+            {(['tasks','sports','books','progress','calendar','analytics','tables'] as const).map(tab => (
               <button key={tab} className={`tab-btn ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
-                {tab === 'tasks' ? 'ЗАДАЧИ' : tab === 'progress' ? 'ПРОГРЕСС' : tab === 'calendar' ? 'КАЛЕНДАРЬ' : tab === 'analytics' ? 'АНАЛИТИКА' : 'ТАБЛИЦЫ'}
+                {tab === 'tasks' ? 'ЗАДАЧИ' : tab === 'sports' ? 'СПОРТ' : tab === 'books' ? 'КНИГИ' : tab === 'progress' ? 'ПРОГРЕСС' : tab === 'calendar' ? 'КАЛЕНДАРЬ' : tab === 'analytics' ? 'АНАЛИТИКА' : 'ТАБЛИЦЫ'}
               </button>
             ))}
           </div>
@@ -322,7 +350,7 @@ export default function App() {
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="btn-ghost" onClick={() => setActiveTab('tasks')}>ДОБАВИТЬ ЗАДАЧУ</button>
             <RandomTask tasks={activeTasks} onActivate={() => setActiveTab('tasks')} />
-            <button className="btn-ghost" onClick={() => { setActiveTab('calendar'); setTimeout(() => { document.getElementById('sports-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }}>🏋️ СПОРТ</button>
+            <button className="btn-ghost" onClick={() => setActiveTab('sports')}>🏋️ СПОРТ</button>
           </div>
         </div>
       </section>
@@ -347,6 +375,25 @@ export default function App() {
             setEditingTask={setEditingTask}
           />
         )}
+        {activeTab === 'sports' && (
+          <SportsSection
+            workouts={data.workouts || []}
+            onAdd={addWorkout}
+            onUpdate={updateWorkout}
+            onDelete={deleteWorkout}
+            onComplete={completeWorkout}
+            onUncomplete={uncompleteWorkout}
+            onRenameWorkoutType={renameWorkoutType}
+          />
+        )}
+        {activeTab === 'books' && (
+          <BooksSection
+            books={data.books || []}
+            onAdd={addBook}
+            onUpdate={updateBook}
+            onDelete={deleteBook}
+          />
+        )}
         {activeTab === 'progress' && (
           <section>
             <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>ПРОГРЕСС</h2>
@@ -354,6 +401,10 @@ export default function App() {
               totalXP={totalXP} treeStage={treeStage} levelInfo={levelInfo}
               activeCount={activeTasks.length} completedCount={completedTasks.length}
               pomodoroSessions={data.pomodoroHistory.length}
+              workoutsCount={(data.workouts || []).filter(w => w.completed).length}
+              workoutsDuration={(data.workouts || []).filter(w => w.completed).reduce((s, w) => s + w.duration, 0)}
+              booksCount={(data.books || []).filter(b => b.status === 'completed').length}
+              booksPages={(data.books || []).filter(b => b.status === 'completed').reduce((s, b) => s + b.totalPages, 0)}
               large sideLayout treeSize={480} zoom={1}
             />
           </section>
@@ -378,15 +429,6 @@ export default function App() {
               />
             )}
             {calendarView === 'workouts' && <WorkoutCalendar workouts={data.workouts || []} />}
-            <SportsSection
-              workouts={data.workouts || []}
-              onAdd={addWorkout}
-              onUpdate={updateWorkout}
-              onDelete={deleteWorkout}
-              onComplete={completeWorkout}
-              onUncomplete={uncompleteWorkout}
-              onRenameWorkoutType={renameWorkoutType}
-            />
           </section>
         )}
         {activeTab === 'analytics' && (
