@@ -36,7 +36,6 @@ export default function App() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastProgressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [pomodoroCompleteToast, setPomodoroCompleteToast] = useState<{ taskId: string; taskTitle: string; xp: number } | null>(null);
-  const [pomodoroRestoreSignal, setPomodoroRestoreSignal] = useState(0);
   const [calendarView, setCalendarView] = useState<'heatmap' | 'tasks' | 'workouts'>('heatmap');
 
   useEffect(() => {
@@ -423,7 +422,6 @@ export default function App() {
             setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp });
             setPomodoroTask(null);
           }}
-          restoreSignal={pomodoroRestoreSignal}
         />
       )}
 

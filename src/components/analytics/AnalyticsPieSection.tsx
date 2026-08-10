@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 
 const CHART_COLORS = ['#ffffff', '#f0f0fa', '#a0a0ff', '#5aaa6f', '#ffb7c5', '#ffd700', '#87ceeb', '#ff9eb5'];
@@ -12,42 +12,12 @@ interface AnalyticsPieSectionProps {
   onSliceClick: (item: any) => void;
 }
 
-const renderActiveShape = (props: any, sportPieMode?: 'count' | 'duration') => {
-  const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, fill, payload } = props;
-  const RADIAN = Math.PI / 180;
-  const cos = Math.cos(-midAngle * RADIAN);
-  const sin = Math.sin(-midAngle * RADIAN);
-  const lineEndR = (outerRadius + 8) * 1.35;
-  const textR = (outerRadius + 8) * 1.55;
-  const ex = cx + lineEndR * cos;
-  const ey = cy + lineEndR * sin;
-  const tx = cx + textR * cos;
-  const ty = cy + textR * sin;
-  const color = payload?.color || fill || '#ffffff';
-  const textAnchor = tx > cx ? 'start' : 'end';
-  const icon = payload?.emoji || payload?.icon || '';
-  const displayVal = sportPieMode === 'duration' ? `${payload?.duration || 0} мин` : `${payload?.value || 0}`;
-
-  return (
-    <g>
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius + 8}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-        stroke="#ffffff"
-        strokeWidth={2}
-      />
-      <path d={`M${cx + (outerRadius + 8) * cos},${cy + (outerRadius + 8) * sin}L${ex},${ey}`} stroke={color} strokeWidth={2} fill="none" />
-      <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={13} fontWeight={700}>
-        {icon} {payload?.name} ({displayVal})
-      </text>
-    </g>
-  );
-};
+interface SectorInfo {
+  startAngle: number;
+  endAngle: number;
+  cx: number;
+  cy: number;
+}
 
 export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
   data,
@@ -58,11 +28,10 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
   onSliceClick,
 }) => {
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const sectorInfoMapRef = useRef<Record<number, SectorInfo>>({});
 
-  const activeProps = {
-    activeIndex,
-    activeShape: (props: any) => renderActiveShape(props, sportPieMode),
-  };
+  const activeSectorInfo = activeIndex >= 0 ? sectorInfoMapRef.current[activeIndex] : null;
+  const activeItem = activeIndex >= 0 ? data[activeIndex] : null;
 
   return (
     <div className="chart-container" ref={pieRef} style={{ outline: 'none' }} tabIndex={-1}>
@@ -102,10 +71,7 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
               cx="50%"
               cy="50%"
               outerRadius={100}
-              {...(activeProps as any)}
-              isAnimationActive={true}
-              animationDuration={600}
-              animationEasing="ease-in-out"
+              isAnimationActive={false}
               labelLine={false}
               rootTabIndex={-1}
               onMouseEnter={(_, index) => setActiveIndex(index)}
@@ -115,13 +81,18 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
                 const d = data[index];
                 if (d) onSliceClick(d);
               }}
-              label={({ cx, cy, midAngle, outerRadius, payload, index }: any) => {
-                if (index === activeIndex) return null; // handled by renderActiveShape
+              label={({ cx, cy, midAngle, startAngle, endAngle, outerRadius, payload, index }: any) => {
+                if (startAngle !== undefined && endAngle !== undefined && cx !== undefined && cy !== undefined) {
+                  sectorInfoMapRef.current[index] = { startAngle, endAngle, cx, cy };
+                }
+
+                const isActive = index === activeIndex;
+                const currentOuterR = isActive ? outerRadius + 8 : outerRadius;
                 const RADIAN = Math.PI / 180;
                 const cos = Math.cos(-midAngle * RADIAN);
                 const sin = Math.sin(-midAngle * RADIAN);
-                const lineEndR = outerRadius * 1.35;
-                const textR = outerRadius * 1.55;
+                const lineEndR = currentOuterR * 1.35;
+                const textR = currentOuterR * 1.55;
                 const ex = cx + lineEndR * cos;
                 const ey = cy + lineEndR * sin;
                 const tx = cx + textR * cos;
@@ -135,9 +106,22 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
                     : `${payload?.value || 0}`;
 
                 return (
-                  <g style={{ transition: 'all 0.3s ease' }}>
-                    <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
-                    <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
+                  <g style={{ opacity: activeIndex === -1 || isActive ? 1 : 0.7 }}>
+                    <path
+                      d={`M${cx + currentOuterR * cos},${cy + currentOuterR * sin}L${ex},${ey}`}
+                      stroke={color}
+                      strokeWidth={isActive ? 2 : 1.5}
+                      fill="none"
+                    />
+                    <text
+                      x={tx}
+                      y={ty}
+                      fill={color}
+                      textAnchor={textAnchor}
+                      dominantBaseline="central"
+                      fontSize={isActive ? 13 : 12}
+                      fontWeight={isActive ? 700 : 600}
+                    >
                       {icon} {payload?.name} ({displayVal})
                     </text>
                   </g>
@@ -145,9 +129,25 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
               }}
             >
               {data.map((d, i) => (
-                <Cell key={d.name || i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
+                <Cell key={d.name || i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" style={{ cursor: 'pointer' }} />
               ))}
             </Pie>
+
+            {/* Custom active sector overlay */}
+            {activeSectorInfo && activeItem && (
+              <Sector
+                cx={activeSectorInfo.cx}
+                cy={activeSectorInfo.cy}
+                innerRadius={0}
+                outerRadius={108}
+                startAngle={activeSectorInfo.startAngle}
+                endAngle={activeSectorInfo.endAngle}
+                fill={activeItem.color || CHART_COLORS[activeIndex % CHART_COLORS.length]}
+                stroke="#ffffff"
+                strokeWidth={2}
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
           </PieChart>
         </ResponsiveContainer>
       )}

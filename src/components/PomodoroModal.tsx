@@ -7,10 +7,9 @@ interface Props {
   onClose: () => void;
   onUpdateSettings: (s: Partial<AppSettings>) => void;
   onSessionFinished: (wasMinimized: boolean, xp: number) => void;
-  restoreSignal?: number;
 }
 
-export default function PomodoroModal({ task, settings, onClose, onUpdateSettings, onSessionFinished, restoreSignal }: Props) {
+export default function PomodoroModal({ task, settings, onClose, onUpdateSettings, onSessionFinished }: Props) {
   const totalMs = settings.pomodoroWorkMinutes * 60 * 1000;
   const [endTime, setEndTime] = useState<number | null>(null);
   const [pausedRemainingMs, setPausedRemainingMs] = useState(totalMs);
@@ -26,7 +25,6 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
   const finishedRef = useRef(false);
 
   useEffect(() => { minimizedRef.current = minimized; }, [minimized]);
-  useEffect(() => { setMinimized(false); }, [restoreSignal]);
 
   // Timestamp-based high-frequency timer (50ms update rate) for silky smooth ring movement
   useEffect(() => {
