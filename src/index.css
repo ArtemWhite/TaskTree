@@ -311,6 +311,7 @@ input[type="time"] {
 
 /* Number input — hide native spinners, custom ghost buttons */
 .spin-input {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 .spin-input::-webkit-inner-spin-button,

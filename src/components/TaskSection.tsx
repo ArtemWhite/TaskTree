@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { Task, Category, Difficulty } from '../types';
+import { TaskService } from '../services/TaskService';
+import { TaskCard } from './tasks/TaskCard';
 
 interface Props {
   tasks: Task[];
@@ -19,7 +21,6 @@ interface Props {
 }
 
 const DIFFICULTY_XP: Record<Difficulty, number> = { easy: 20, medium: 50, hard: 100 };
-
 const EMOJI_LIST = ['🧠','🏋️','📚','💻','🎨','🎵','🍳','🏃','🧘','💼','📝','🎯','🌟','🔥','💡','🎮','📖','✍️','🎓','🏆','💪','🧹','🛒','📞','✈️','🚗','🏠','💰','🎁','🌈','🐾','🍕'];
 
 export default function TaskSection({
@@ -43,7 +44,6 @@ export default function TaskSection({
   const [catEmoji, setCatEmoji] = useState('📝');
   const [catColor, setCatColor] = useState('#ffffff');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
   const [editCatId, setEditCatId] = useState<string | null>(null);
 
   // Filter state
@@ -140,6 +140,11 @@ export default function TaskSection({
     return m;
   }, [categories]);
 
+  const groupedTasks = useMemo(() => {
+    if (!groupByDate) return null;
+    return TaskService.groupTasksByDate(filteredTasks);
+  }, [filteredTasks, groupByDate]);
+
   return (
     <section>
       <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>ЗАДАЧИ</h2>
@@ -148,320 +153,192 @@ export default function TaskSection({
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
         {(['active','completed','categories'] as const).map(t => (
           <button key={t} className={`tab-btn ${subtab === t ? 'active' : ''}`} onClick={() => setSubtab(t)}>
-            {t === 'active' ? `АКТИВНЫЕ (${tasks.length})` : t === 'completed' ? `ВЫПОЛНЕННЫЕ (${completedTasks.length})` : 'КАТЕГОРИИ'}
+            {t === 'active' ? `АКТИВНЫЕ (${tasks.length})` : t === 'completed' ? `ВЫПОЛНЕННЫЕ (${completedTasks.length})` : `КАТЕГОРИИ (${categories.length})`}
           </button>
         ))}
       </div>
 
-      {/* CATEGORIES SUBTAB */}
-      {subtab === 'categories' && (
-        <div className="card-panel" style={{ marginBottom: '24px' }}>
-          <h3 className="micro-cap" style={{ marginBottom: '20px' }}>УПРАВЛЕНИЕ КАТЕГОРИЯМИ</h3>
-
-          {/* Add category form */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div style={{ flex: '1 1 200px' }}>
-              <label className="micro-cap" style={{ display: 'block', marginBottom: '4px', fontSize: '10px' }}>Название</label>
-              <input className="input-spacex" value={catName} onChange={e => setCatName(e.target.value)} placeholder="Новая категория" />
-            </div>
-            <div style={{ position: 'relative' }}>
-              <label className="micro-cap" style={{ display: 'block', marginBottom: '4px', fontSize: '10px' }}>Эмодзи</label>
-              <button className="input-spacex" style={{ width: '60px', textAlign: 'center', cursor: 'pointer' }}
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
-                {catEmoji}
-              </button>
-              {showEmojiPicker && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, background: 'var(--bg-secondary)', border: '1px solid var(--hairline)', borderRadius: '8px', padding: '8px', marginTop: '4px' }}>
-                  <div className="emoji-grid">
+      {subtab === 'categories' ? (
+        <div>
+          <div className="card-panel" style={{ marginBottom: '24px' }}>
+            <h4 className="micro-cap" style={{ marginBottom: '16px' }}>НОВАЯ КАТЕГОРИЯ</h4>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ position: 'relative' }}>
+                <button type="button" className="btn-ghost" onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ fontSize: '20px' }}>
+                  {catEmoji}
+                </button>
+                {showEmojiPicker && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 10,
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border-soft)',
+                    borderRadius: '12px', padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)',
+                    gap: '8px', maxWidth: '280px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+                  }}>
                     {EMOJI_LIST.map(e => (
-                      <button key={e} className={`emoji-option ${catEmoji === e ? 'selected' : ''}`}
-                        onClick={() => { setCatEmoji(e); setShowEmojiPicker(false); }}>{e}</button>
+                      <button key={e} type="button" className="btn-ghost btn-ghost-xs" onClick={() => { setCatEmoji(e); setShowEmojiPicker(false); }}>
+                        {e}
+                      </button>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              <input type="color" value={catColor} onChange={e => setCatColor(e.target.value)} style={{ width: '40px', height: '40px', border: 'none', background: 'transparent', cursor: 'pointer' }} title="Цвет категории" />
+              <input className="input-spacex" type="text" placeholder="Название категории..." value={catName} onChange={e => setCatName(e.target.value)} style={{ flex: 1, minWidth: '200px' }} />
+              <button className="btn-ghost btn-ghost-sm" onClick={handleAddCategory}>➕ СОЗДАТЬ</button>
             </div>
-            <div>
-              <label className="micro-cap" style={{ display: 'block', marginBottom: '4px', fontSize: '10px' }}>Цвет</label>
-              <input type="color" className="input-spacex" style={{ width: '50px', height: '46px', padding: '4px', cursor: 'pointer' }}
-                value={catColor} onChange={e => setCatColor(e.target.value)} />
-            </div>
-            <button className="btn-ghost btn-ghost-sm" onClick={handleAddCategory}>ДОБАВИТЬ</button>
           </div>
 
-          {/* Category list */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {categories.map(cat => (
-              <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--surface-hover)', borderRadius: '4px' }}>
-                {editCatId === cat.id ? (
-                  <>
-                    <input className="input-spacex" style={{ flex: 1 }} value={catName} onChange={e => setCatName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { onUpdateCategory(cat.id, { name: catName, emoji: catEmoji, color: catColor }); setEditCatId(null); } }} />
-                    <button className="emoji-option" style={{ fontSize: '20px' }} onClick={() => setShowEmojiPicker(!showEmojiPicker)}>{catEmoji}</button>
-                    {showEmojiPicker && (
-                      <div style={{ position: 'absolute', zIndex: 20, background: 'var(--bg-secondary)', border: '1px solid var(--hairline)', borderRadius: '8px', padding: '8px' }}>
-                        <div className="emoji-grid">
-                          {EMOJI_LIST.map(e => (
-                            <button key={e} className={`emoji-option ${catEmoji === e ? 'selected' : ''}`}
-                              onClick={() => { setCatEmoji(e); setShowEmojiPicker(false); }}>{e}</button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <input type="color" value={catColor} onChange={e => setCatColor(e.target.value)} style={{ width: '36px', height: '36px' }} />
-                    <button className="btn-ghost btn-ghost-xs" onClick={() => { onUpdateCategory(cat.id, { name: catName, emoji: catEmoji, color: catColor }); setEditCatId(null); }}>✓</button>
-                  </>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+            {categories.map(c => (
+              <div key={c.id} className="card-panel" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: `4px solid ${c.color}` }}>
+                {editCatId === c.id ? (
+                  <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
+                    <input className="input-spacex" type="text" defaultValue={c.name} onBlur={e => { onUpdateCategory(c.id, { name: e.target.value }); setEditCatId(null); }} autoFocus style={{ flex: 1 }} />
+                    <input type="color" defaultValue={c.color} onChange={e => onUpdateCategory(c.id, { color: e.target.value })} style={{ width: '32px', height: '32px', border: 'none', background: 'transparent' }} />
+                  </div>
                 ) : (
                   <>
-                    <span style={{ fontSize: '24px' }}>{cat.emoji}</span>
-                    <span style={{ flex: 1, fontSize: '14px' }}>{cat.name}</span>
-                    <span className="badge" style={{ borderColor: cat.color, color: cat.color }}>
-                      {tasks.filter(t => t.categoryId === cat.id && !t.completed).length} активных
-                    </span>
-                    <button className="btn-ghost btn-ghost-xs" onClick={() => {
-                      setEditCatId(cat.id); setCatName(cat.name); setCatEmoji(cat.emoji); setCatColor(cat.color);
-                    }}>РЕД</button>
-                    <button className="btn-ghost btn-ghost-xs" onClick={() => onDeleteCategory(cat.id)}
-                      disabled={categories.length <= 1}>УДЛ</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>{c.emoji}</span>
+                      <span style={{ fontWeight: 700 }}>{c.name}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button className="btn-ghost btn-ghost-xs" onClick={() => setEditCatId(c.id)}>✏️</button>
+                      <button className="btn-ghost btn-ghost-xs" style={{ color: '#ff6b6b' }} onClick={() => onDeleteCategory(c.id)}>🗑️</button>
+                    </div>
                   </>
                 )}
               </div>
             ))}
           </div>
         </div>
-      )}
+      ) : (
+        <div>
+          {/* Action bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+            <button className="btn-ghost" onClick={() => { if (showForm) resetForm(); else setShowForm(true); }}>
+              {showForm ? '✕ ЗАКРЫТЬ' : '➕ НОВАЯ ЗАДАЧА'}
+            </button>
 
-      {/* ACTIVE / COMPLETED SUBTABS */}
-      {subtab !== 'categories' && (
-        <>
-          {/* Filters & Add button */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <input className="input-spacex" style={{ flex: '1 1 200px', minWidth: '180px' }}
-              placeholder="Поиск задач..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-            <select className="input-spacex" style={{ width: 'auto' }} value={filterCategory}
-              onChange={e => setFilterCategory(e.target.value)}>
-              <option value="all">Все категории</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
-            </select>
-            <select className="input-spacex" style={{ width: 'auto' }} value={filterDifficulty}
-              onChange={e => setFilterDifficulty(e.target.value)}>
-              <option value="all">Все сложности</option>
-              <option value="easy">Лёгкая</option>
-              <option value="medium">Средняя</option>
-              <option value="hard">Сложная</option>
-            </select>
-            <select className="input-spacex" style={{ width: 'auto' }} value={sortBy}
-              onChange={e => setSortBy(e.target.value as typeof sortBy)}>
-              <option value="createdAt">По созданию</option>
-              <option value="deadline">По дедлайну</option>
-              <option value="title">По названию</option>
-              <option value="priority">По приоритету</option>
-              <option value="createdAt+deadline">По дедлайну и дате</option>
-            </select>
-            <button className="btn-ghost btn-ghost-xs" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
-              title={sortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}>
-              {sortDir === 'asc' ? '↑' : '↓'}
-            </button>
-            <button className={`btn-ghost btn-ghost-xs ${groupByDate ? 'active' : ''}`} onClick={() => setGroupByDate(!groupByDate)}>
-              ГРУППИРОВКА: {groupByDate ? 'ПО ДНЯМ' : 'НЕТ'}
-            </button>
-            {subtab === 'active' && (
-              <button className="btn-ghost" onClick={() => { resetForm(); setShowForm(true); }}>
-                + ДОБАВИТЬ
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input className="input-spacex" type="text" placeholder="🔍 Поиск задач..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '180px', padding: '6px 12px', fontSize: '13px' }} />
+
+              <select className="input-spacex" style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }} value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+                <option value="all">Все категории</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+              </select>
+
+              <select className="input-spacex" style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }} value={filterDifficulty} onChange={e => setFilterDifficulty(e.target.value)}>
+                <option value="all">Вся сложность</option>
+                <option value="easy">Лёгкая (20 XP)</option>
+                <option value="medium">Средняя (50 XP)</option>
+                <option value="hard">Сложная (100 XP)</option>
+              </select>
+
+              <select className="input-spacex" style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }} value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
+                <option value="createdAt">По дате создания</option>
+                <option value="priority">По приоритету</option>
+                <option value="deadline">По дедлайну</option>
+                <option value="title">По алфавиту</option>
+              </select>
+
+              <button className="btn-ghost btn-ghost-xs" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}>
+                {sortDir === 'asc' ? '↑' : '↓'}
               </button>
-            )}
+
+              <button className={`btn-ghost btn-ghost-xs ${groupByDate ? 'active' : ''}`} style={{ background: groupByDate ? 'var(--ghost-hover)' : 'transparent' }} onClick={() => setGroupByDate(g => !g)}>
+                📅 ГРУППИРОВКА
+              </button>
+            </div>
           </div>
 
-          {/* Task Form Modal */}
+          {/* Form */}
           {showForm && (
-            <div className="modal-overlay" onClick={resetForm}>
-              <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                <h3 className="micro-cap" style={{ marginBottom: '20px' }}>
-                  {editingTask ? 'РЕДАКТИРОВАТЬ ЗАДАЧУ' : 'НОВАЯ ЗАДАЧА'}
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <input className="input-spacex" placeholder="Название задачи" value={title}
-                    onChange={e => setTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }} autoFocus />
-                  <select className="input-spacex" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
-                  </select>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <select className="input-spacex" value={difficulty} onChange={e => {
-                      const d = e.target.value as Difficulty;
-                      setDifficulty(d);
-                      setXp(DIFFICULTY_XP[d]);
-                    }}>
-                      <option value="easy">Лёгкая (20 XP)</option>
-                      <option value="medium">Средняя (50 XP)</option>
-                      <option value="hard">Сложная (100 XP)</option>
-                    </select>
-                    <select className="input-spacex" value={priority} onChange={e => setPriority(e.target.value as 'low'|'medium'|'high')}>
-                      <option value="low">Приоритет: Низкий</option>
-                      <option value="medium">Приоритет: Средний</option>
-                      <option value="high">Приоритет: Высокий</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <label className="micro-cap" style={{ display: 'block', marginBottom: '4px', fontSize: '10px' }}>Дедлайн (дата)</label>
-                      <input type="date" className="input-spacex" value={deadlineDate}
-                        onChange={e => setDeadlineDate(e.target.value)} />
-                    </div>
-                    <div style={{ width: '120px' }}>
-                      <label className="micro-cap" style={{ display: 'block', marginBottom: '4px', fontSize: '10px' }}>Время</label>
-                      <input type="time" className="input-spacex" value={deadlineTime}
-                        onChange={e => setDeadlineTime(e.target.value)} />
-                    </div>
-                    <button className="btn-ghost btn-ghost-xs" style={{ alignSelf: 'flex-end', marginBottom: '2px' }}
-                      onClick={() => { setDeadlineDate(''); setDeadlineTime(''); }}
-                      title="Очистить дедлайн">ОЧИСТ</button>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                  <button className="btn-ghost" onClick={handleSubmit}>
-                    {editingTask ? 'СОХРАНИТЬ' : 'ДОБАВИТЬ'}
-                  </button>
-                  <button className="btn-ghost btn-ghost-sm" onClick={resetForm}>ОТМЕНА</button>
-                </div>
+            <div className="card-panel" style={{ marginBottom: '32px' }}>
+              <h4 className="micro-cap" style={{ marginBottom: '16px' }}>{editingTask ? 'РЕДАКТИРОВАТЬ ЗАДАЧУ' : 'СОЗДАТЬ ЗАДАЧУ'}</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                <input className="input-spacex" type="text" placeholder="Название задачи..." value={title} onChange={e => setTitle(e.target.value)} autoFocus />
+
+                <select className="input-spacex" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+                </select>
+
+                <select className="input-spacex" value={priority} onChange={e => setPriority(e.target.value as any)}>
+                  <option value="high">🔴 Высокий приоритет</option>
+                  <option value="medium">🟡 Средний приоритет</option>
+                  <option value="low">🔵 Низкий приоритет</option>
+                </select>
+
+                <select className="input-spacex" value={difficulty} onChange={e => {
+                  const diff = e.target.value as Difficulty;
+                  setDifficulty(diff);
+                  setXp(DIFFICULTY_XP[diff]);
+                }}>
+                  <option value="easy">🟢 Лёгкая (20 XP)</option>
+                  <option value="medium">🟡 Средняя (50 XP)</option>
+                  <option value="hard">🔴 Сложная (100 XP)</option>
+                </select>
+
+                <input className="input-spacex" type="date" value={deadlineDate} onChange={e => setDeadlineDate(e.target.value)} />
+                <input className="input-spacex" type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="btn-ghost btn-ghost-sm" onClick={handleSubmit}>
+                  {editingTask ? '💾 СОХРАНИТЬ' : '➕ СОЗДАТЬ'}
+                </button>
+                <button className="btn-ghost btn-ghost-sm" onClick={resetForm}>✕ ОТМЕНА</button>
               </div>
             </div>
           )}
 
-          {/* Task list */}
-          <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>
-            {filteredTasks.length === 0 ? (
-              <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                {subtab === 'active' ? 'Нет активных задач. Добавьте новую!' : 'Нет выполненных задач.'}
+          {/* List */}
+          {filteredTasks.length === 0 ? (
+            <div className="card-panel" style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <p style={{ fontSize: '48px', marginBottom: '12px' }}>📋</p>
+              <p className="micro-cap" style={{ marginBottom: '4px' }}>НЕТ ЗАДАЧ</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Добавьте новую задачу выше</p>
+            </div>
+          ) : groupByDate && groupedTasks ? (
+            Object.entries(groupedTasks).map(([date, group]) => (
+              <div key={date} style={{ marginBottom: '24px' }}>
+                <h4 className="micro-cap" style={{ marginBottom: '12px', borderBottom: '1px solid var(--hairline)', paddingBottom: '4px' }}>
+                  📅 {new Date(date + 'T12:00:00').toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {group.map(t => (
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      category={categoryMap[t.categoryId]}
+                      onComplete={onComplete}
+                      onUncomplete={onUncomplete}
+                      onEdit={startEdit}
+                      onDelete={onDelete}
+                      onStartPomodoro={onStartPomodoro}
+                    />
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {(() => {
-                  const renderTask = (task: Task) => {
-                    const cat = categoryMap[task.categoryId];
-                    return (
-                      <div key={task.id} style={{
-                        display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 24px',
-                        borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap', opacity: task.completed ? 0.5 : 1,
-                        transition: 'opacity 0.3s'
-                      }}>
-                        {!task.completed ? (
-                          <button className="checkbox-spacex" onClick={() => onComplete(task.id)}
-                            title="Отметить выполненной" />
-                        ) : (
-                          <button className="checkbox-spacex" style={{ background: '#ffffff' }}
-                            onClick={() => onUncomplete(task.id)} title="Вернуть в активные">
-                            <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000000', fontSize: '12px' }}>✓</span>
-                          </button>
-                        )}
-  
-                        <span style={{ fontSize: '20px' }}>{cat?.emoji || '📝'}</span>
-  
-                        <div style={{ flex: 1, minWidth: '150px' }}>
-                          <div style={{ fontSize: '14px', textDecoration: task.completed ? 'line-through' : 'none' }}>
-                            {task.title}
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                            <span className="badge">{cat?.name || '—'}</span>
-                            <span className="badge">
-                              {task.difficulty === 'easy' ? 'ЛЁГКАЯ' : task.difficulty === 'medium' ? 'СРЕДНЯЯ' : 'СЛОЖНАЯ'}
-                            </span>
-                            {task.priority && (
-                              <span className="badge" style={{
-                                borderColor: task.priority === 'high' ? '#ff6b6b' : task.priority === 'medium' ? '#ffd700' : '#a29bfe',
-                                color: task.priority === 'high' ? '#ff6b6b' : task.priority === 'medium' ? '#ffd700' : '#a29bfe'
-                              }}>
-                                {task.priority === 'high' ? '🔥 ВЫСОКИЙ' : task.priority === 'medium' ? '⭐ СРЕДНИЙ' : '🔽 НИЗКИЙ'}
-                              </span>
-                            )}
-                            <span className="badge">+{task.xp} XP</span>
-                            {task.pomodoroCount > 0 && (
-                              <span className="badge">🍅 ×{task.pomodoroCount}</span>
-                            )}
-                            {task.deadline && (
-                              <span className="badge" style={(() => {
-                                const deadlineDate = new Date(task.deadline);
-                                const now = new Date();
-                                if (task.completed && task.completedDate) {
-                                  const completedDate = new Date(task.completedDate);
-                                  const onTime = completedDate <= deadlineDate;
-                                  return { borderColor: onTime ? '#5aaa6f' : '#ff6b6b', color: onTime ? '#5aaa6f' : '#ff6b6b' };
-                                }
-                                const overdue = deadlineDate < now;
-                                return { borderColor: overdue ? '#ff6b6b' : '#5aaa6f', color: overdue ? '#ff6b6b' : '#5aaa6f' };
-                              })()}>
-                                ⏰ {new Date(task.deadline).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
-                                {task.deadline.includes('T') && task.deadline.slice(11, 16) !== '23:59' ? ` ${task.deadline.slice(11, 16)}` : ''}
-                              </span>
-                            )}
-                            {task.completed && task.completedDate && (
-                              <span className="badge">
-                                ✓ {new Date(task.completedDate).toLocaleDateString('ru')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-  
-                        {!task.completed && (
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <button className="btn-ghost btn-ghost-xs" onClick={() => onStartPomodoro(task)} title="Помодоро-таймер">
-                              🍅
-                            </button>
-                            <button className="btn-ghost btn-ghost-xs" onClick={() => startEdit(task)}>РЕД</button>
-                            <button className="btn-ghost btn-ghost-xs" onClick={() => onDelete(task.id)}>УДЛ</button>
-                          </div>
-                        )}
-                        {task.completed && (
-                          <button className="btn-ghost btn-ghost-xs" onClick={() => onDelete(task.id)}>УДЛ</button>
-                        )}
-                      </div>
-                    );
-                  };
-
-                  if (groupByDate) {
-                    const groups: Record<string, Task[]> = {};
-                    const noDateTasks: Task[] = [];
-                    
-                    filteredTasks.forEach(t => {
-                      const dateField = subtab === 'active' ? t.deadline : t.completedDate;
-                      if (!dateField) {
-                        noDateTasks.push(t);
-                      } else {
-                        const dateStr = dateField.slice(0, 10);
-                        if (!groups[dateStr]) groups[dateStr] = [];
-                        groups[dateStr].push(t);
-                      }
-                    });
-
-                    const sortedDates = Object.keys(groups).sort((a, b) => sortDir === 'asc' ? a.localeCompare(b) : b.localeCompare(a));
-                    
-                    return (
-                      <>
-                        {sortedDates.map(date => (
-                          <div key={date}>
-                            <div style={{ padding: '8px 24px', background: 'var(--surface-hover)', fontSize: '13px', fontWeight: 'bold', borderBottom: '1px solid var(--hairline)' }}>
-                              {new Date(date).toLocaleDateString('ru', { weekday: 'short', day: 'numeric', month: 'long' })}
-                            </div>
-                            {groups[date].map(renderTask)}
-                          </div>
-                        ))}
-                        {noDateTasks.length > 0 && (
-                          <div>
-                            <div style={{ padding: '8px 24px', background: 'var(--surface-hover)', fontSize: '13px', fontWeight: 'bold', borderBottom: '1px solid var(--hairline)' }}>
-                              Без даты
-                            </div>
-                            {noDateTasks.map(renderTask)}
-                          </div>
-                        )}
-                      </>
-                    );
-                  }
-
-                  return filteredTasks.map(renderTask);
-                })()}
-              </div>
-            )}
-          </div>
-        </>
+            ))
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {filteredTasks.map(t => (
+                <TaskCard
+                  key={t.id}
+                  task={t}
+                  category={categoryMap[t.categoryId]}
+                  onComplete={onComplete}
+                  onUncomplete={onUncomplete}
+                  onEdit={startEdit}
+                  onDelete={onDelete}
+                  onStartPomodoro={onStartPomodoro}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </section>
   );

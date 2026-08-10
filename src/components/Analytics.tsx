@@ -1,6 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Task, Category, PomodoroSession, ChartType, Workout } from '../types';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, Legend } from 'recharts';
+import { WorkoutService } from '../services/WorkoutService';
+import { AnalyticsService } from '../services/AnalyticsService';
+import { useAnimatedPieData } from '../hooks/useAnimatedPieData';
+import { AnalyticsCharts } from './analytics/AnalyticsCharts';
+import { AnalyticsPieSection } from './analytics/AnalyticsPieSection';
+import { AnalyticsPopupModal, type PopupData } from './analytics/AnalyticsPopupModal';
 
 interface Props {
   tasks: Task[];
@@ -9,129 +14,19 @@ interface Props {
   workouts: Workout[];
 }
 
-interface WorkoutTypeDef {
-  icon: string;
-  name: string;
-  color: string;
-}
-
-const BUILT_IN_WORKOUT_TYPES: WorkoutTypeDef[] = [
-  { icon: '🏃', name: 'Бег', color: '#ff6b6b' },
-  { icon: '🏋️', name: 'Силовая', color: '#ff9f43' },
-  { icon: '🏊', name: 'Плавание', color: '#54a0ff' },
-  { icon: '🚴', name: 'Вело', color: '#5f27cd' },
-  { icon: '🧘', name: 'Растяжка', color: '#a29bfe' },
-  { icon: '🥊', name: 'Единоборства', color: '#e056a0' },
-  { icon: '🎾', name: 'Игровые', color: '#ffd700' },
-  { icon: '🏔️', name: 'Поход', color: '#00b894' },
-  { icon: '💪', name: 'Фитнес', color: '#e17055' },
-  { icon: '⚽', name: 'Футбол', color: '#74b9ff' },
-  { icon: '🏀', name: 'Баскетбол', color: '#fd9644' },
-  { icon: '📋', name: 'Другое', color: '#b2bec3' },
-];
-
-const CHART_COLORS = ['#ffffff', '#f0f0fa', '#a0a0ff', '#5aaa6f', '#ffb7c5', '#ffd700', '#87ceeb', '#ff9eb5'];
-const CUSTOM_TYPES_KEY = 'tasktrecker-custom-workout-types';
-
-function loadCustomTypes(): WorkoutTypeDef[] {
-  try {
-    const raw = localStorage.getItem(CUSTOM_TYPES_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.length > 0 && typeof parsed[0] === 'string') {
-        return (parsed as string[]).map((name: string) => ({ icon: '⭐', name, color: '#3b82c4' }));
-      }
-      return parsed;
-    }
-  } catch { }
-  return [];
-}
-
-function useAnimatedPieData<T extends { name: string; value: number; duration: number }>(
-  targetData: T[],
-  mode: 'count' | 'duration',
-  durationMs: number = 350
-) {
-  const [animatedData, setAnimatedData] = useState<Array<T & { currentValue: number }>>(() =>
-    targetData.map(d => ({ ...d, currentValue: mode === 'count' ? d.value : d.duration }))
-  );
-
-  const animRef = useRef<number | null>(null);
-  const currentValuesRef = useRef<Record<string, number>>({});
-
-  useEffect(() => {
-    animatedData.forEach(d => {
-      currentValuesRef.current[d.name] = d.currentValue;
-    });
-  });
-
-  useEffect(() => {
-    if (targetData.length === 0) return;
-
-    const startValues: Record<string, number> = {};
-    targetData.forEach(d => {
-      startValues[d.name] = currentValuesRef.current[d.name] ?? (mode === 'count' ? d.duration : d.value);
-    });
-
-    const targetValues: Record<string, number> = {};
-    targetData.forEach(d => {
-      targetValues[d.name] = mode === 'count' ? d.value : d.duration;
-    });
-
-    const startTime = performance.now();
-
-    if (animRef.current) {
-      cancelAnimationFrame(animRef.current);
-    }
-
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / durationMs, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-
-      const nextData = targetData.map(d => {
-        const start = startValues[d.name] ?? 0;
-        const target = targetValues[d.name] ?? 0;
-        const currentVal = start + (target - start) * ease;
-        return {
-          ...d,
-          currentValue: currentVal
-        };
-      });
-
-      setAnimatedData(nextData);
-
-      if (progress < 1) {
-        animRef.current = requestAnimationFrame(animate);
-      }
-    };
-
-    animRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animRef.current) {
-        cancelAnimationFrame(animRef.current);
-      }
-    };
-  }, [targetData, mode, durationMs]);
-
-  return animatedData;
-}
-
 export default function Analytics({ tasks, pomodoroHistory, categories, workouts }: Props) {
   const [activeChart, setActiveChart] = useState(0);
   const [analyticsTab, setAnalyticsTab] = useState<'tasks' | 'sport'>('tasks');
-  type PopupItem = { title: string; date: string; xp: number; pomodoro: number; duration?: number };
-  const [popupData, setPopupData] = useState<{ emoji: string; name: string; color: string; xp: number; items: PopupItem[] } | null>(null);
-  const [popupSort, setPopupSort] = useState<'date' | 'xp'>('date');
-  const [popupSortDir, setPopupSortDir] = useState<'asc' | 'desc'>('desc');
+  const [popupData, setPopupData] = useState<PopupData | null>(null);
   const [sportPieMode, setSportPieMode] = useState<'count' | 'duration'>('count');
+  const [barRange, setBarRange] = useState<'7' | '30'>('7');
+  const [chartType, setChartType] = useState<ChartType>('bar');
+
   const catPieRef = useRef<HTMLDivElement>(null);
   const sportPieRef = useRef<HTMLDivElement>(null);
 
   const closePopup = () => setPopupData(null);
 
-  // Suppress browser focus rings on ALL elements inside pie containers
   useLayoutEffect(() => {
     [catPieRef, sportPieRef].forEach(ref => {
       if (ref.current) {
@@ -146,96 +41,33 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
         ref.current.style.outline = 'none';
       }
     });
-  });
+  }, [analyticsTab]);
 
-  const savedCustomTypes = useMemo(() => loadCustomTypes(), []);
+  const dailyData = useMemo(
+    () => AnalyticsService.calculateDailyData(tasks, pomodoroHistory, workouts),
+    [tasks, pomodoroHistory, workouts]
+  );
 
-  const allWorkoutTypeDefs = useMemo(() => {
-    const custom = savedCustomTypes.filter(t => !BUILT_IN_WORKOUT_TYPES.some(wt => wt.name === t.name));
-    return [...BUILT_IN_WORKOUT_TYPES, ...custom];
-  }, [savedCustomTypes]);
+  const categoryData = useMemo(
+    () => AnalyticsService.calculateCategoryDistribution(tasks, categories).map(d => ({ ...d, currentValue: d.value })),
+    [tasks, categories]
+  );
 
-  const getTypeColor = (name: string) => allWorkoutTypeDefs.find(t => t.name === name)?.color || '#b2bec3';
-  const getTypeIcon = (name: string) => allWorkoutTypeDefs.find(t => t.name === name)?.icon || '📋';
+  const barData = useMemo(() => ({ last7: dailyData.slice(-7), last30: dailyData }), [dailyData]);
 
-  // Data: daily completions (last 30 days)
-  const dailyData = useMemo(() => {
-    const map: Record<string, { date: string; tasks: number; pomodoro: number; xp: number; workouts: number; workoutXP: number }> = {};
-    const now = new Date();
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      map[key] = { date: d.toLocaleDateString('ru', { day: 'numeric', month: 'short' }), tasks: 0, pomodoro: 0, xp: 0, workouts: 0, workoutXP: 0 };
-    }
-    tasks.filter(t => t.completed && t.completedDate).forEach(t => {
-      const key = t.completedDate!.slice(0, 10);
-      if (map[key]) { map[key].tasks++; map[key].xp += t.xp; }
-    });
-    pomodoroHistory.forEach(p => {
-      const key = p.completedAt.slice(0, 10);
-      if (map[key]) { map[key].pomodoro++; map[key].xp += p.xpEarned; }
-    });
-    workouts.filter(w => w.completed).forEach(w => {
-      const key = w.date;
-      if (map[key]) { map[key].workouts++; map[key].workoutXP += w.xp; map[key].xp += w.xp; }
-    });
-    return Object.values(map);
-  }, [tasks, pomodoroHistory, workouts]);
-
-  // Data: category distribution
-  const categoryData = useMemo(() => {
-    const map: Record<string, { name: string; emoji: string; color: string; value: number; xp: number; tasks: PopupItem[] }> = {};
-    categories.forEach(c => { map[c.id] = { name: c.name, emoji: c.emoji, color: c.color, value: 0, xp: 0, tasks: [] }; });
-    tasks.filter(t => t.completed).forEach(t => {
-      if (map[t.categoryId]) {
-        map[t.categoryId].value++;
-        map[t.categoryId].xp += t.xp;
-        map[t.categoryId].tasks.push({ title: t.title, date: t.completedDate || t.createdAt, xp: t.xp, pomodoro: t.pomodoroCount || 0 });
-      }
-    });
-    return Object.values(map).filter(d => d.value > 0);
-  }, [tasks, categories]);
-
-  // Data: last 7/30 days bar
-  const barData = useMemo(() => {
-    const last7 = dailyData.slice(-7);
-    const last30 = dailyData;
-    return { last7, last30 };
-  }, [dailyData]);
-
-  const [barRange, setBarRange] = useState<'7' | '30'>('7');
-  const [chartType, setChartType] = useState<ChartType>('bar');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderChart = (data: Record<string, any>[], dataKey: string, color: string) => {
-    const ChartComponent = chartType === 'line' ? LineChart : chartType === 'area' ? AreaChart : chartType === 'dot' ? ScatterChart : BarChart;
-    return (
-      <ResponsiveContainer width="100%" height={300}>
-        <ChartComponent data={data}>
-          <CartesianGrid stroke="var(--hairline)" strokeDasharray="3 3" />
-          <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-          <YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-          <Tooltip
-            contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--hairline)', borderRadius: '4px', color: 'var(--text-primary)' }}
-            labelStyle={{ color: 'var(--text-soft)', fontWeight: 700, textTransform: 'uppercase', fontSize: '11px' }}
-          />
-          <Legend />
-          {chartType === 'line' && <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={{ r: 3 }} name={dataKey === 'tasks' ? 'Задачи' : dataKey === 'xp' ? 'XP' : dataKey === 'pomodoro' ? 'Помодоро' : dataKey === 'workouts' ? 'Тренировки' : dataKey === 'workoutXP' ? 'XP тренировок' : 'Длительность'} />}
-          {chartType === 'bar' && <Bar dataKey={dataKey} fill={color} radius={[2, 2, 0, 0]} name={dataKey === 'tasks' ? 'Задачи' : dataKey === 'xp' ? 'XP' : dataKey === 'pomodoro' ? 'Помодоро' : dataKey === 'workouts' ? 'Тренировки' : dataKey === 'workoutXP' ? 'XP тренировок' : 'Длительность'} />}
-          {chartType === 'area' && <Area type="monotone" dataKey={dataKey} stroke={color} fill={color} fillOpacity={0.15} name={dataKey === 'tasks' ? 'Задачи' : dataKey === 'xp' ? 'XP' : dataKey === 'pomodoro' ? 'Помодоро' : dataKey === 'workouts' ? 'Тренировки' : dataKey === 'workoutXP' ? 'XP тренировок' : 'Длительность'} />}
-          {chartType === 'dot' && <Scatter dataKey={dataKey} fill={color} name={dataKey === 'tasks' ? 'Задачи' : dataKey === 'xp' ? 'XP' : dataKey === 'pomodoro' ? 'Помодоро' : dataKey === 'workouts' ? 'Тренировки' : dataKey === 'workoutXP' ? 'XP тренировок' : 'Длительность'} />}
-        </ChartComponent>
-      </ResponsiveContainer>
-    );
-  };
-
-  // Data: workout type distribution
   const workoutTypeData = useMemo(() => {
-    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string; tasks: PopupItem[] }> = {};
+    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string; tasks: any[] }> = {};
     workouts.filter(w => w.completed).forEach(w => {
       if (!map[w.workoutType]) {
-        map[w.workoutType] = { name: w.workoutType, value: 0, xp: 0, duration: 0, color: getTypeColor(w.workoutType), icon: getTypeIcon(w.workoutType), tasks: [] };
+        map[w.workoutType] = {
+          name: w.workoutType,
+          value: 0,
+          xp: 0,
+          duration: 0,
+          color: WorkoutService.getTypeColor(w.workoutType),
+          icon: WorkoutService.getTypeIcon(w.workoutType),
+          tasks: [],
+        };
       }
       map[w.workoutType].value++;
       map[w.workoutType].xp += w.xp;
@@ -243,7 +75,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
       map[w.workoutType].tasks.push({ title: w.title || w.workoutType, date: w.date, xp: w.xp, pomodoro: 0, duration: w.duration });
     });
     return Object.values(map).filter(d => d.value > 0);
-  }, [workouts, allWorkoutTypeDefs]);
+  }, [workouts]);
 
   const animatedWorkoutTypeData = useAnimatedPieData(workoutTypeData, sportPieMode, 350);
 
@@ -253,21 +85,10 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
     { title: `ПОМОДОРО-СЕССИИ (${barRange} ДНЕЙ)`, data: barRange === '7' ? barData.last7 : barData.last30, key: 'pomodoro', color: '#ffb7c5' },
   ];
 
-  const sportDurationData = useMemo(() => {
-    const map: Record<string, { date: string; duration: number }> = {};
-    const now = new Date();
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      map[key] = { date: d.toLocaleDateString('ru', { day: 'numeric', month: 'short' }), duration: 0 };
-    }
-    workouts.filter(w => w.completed).forEach(w => {
-      const key = w.date;
-      if (map[key]) map[key].duration += w.duration;
-    });
-    return Object.values(map);
-  }, [workouts]);
+  const sportDurationData = useMemo(
+    () => AnalyticsService.calculateSportDurationData(workouts),
+    [workouts]
+  );
 
   const sportCharts = [
     { title: 'ТРЕНИРОВКИ ПО ДНЯМ', data: dailyData, key: 'workouts', color: 'var(--text-primary)' },
@@ -275,18 +96,12 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
     { title: `ДЛИТЕЛЬНОСТЬ ТРЕНИРОВОК (${barRange} ДНЕЙ)`, data: barRange === '7' ? sportDurationData.slice(-7) : sportDurationData, key: 'duration', color: '#87ceeb' },
   ];
 
-  const totalWorkoutStats = useMemo(() => ({
-    total: workouts.length,
-    completed: workouts.filter(w => w.completed).length,
-    totalDuration: workouts.filter(w => w.completed).reduce((s, w) => s + w.duration, 0),
-    totalXP: workouts.filter(w => w.completed).reduce((s, w) => s + w.xp, 0),
-  }), [workouts]);
+  const totalWorkoutStats = useMemo(() => WorkoutService.calculateWorkoutStats(workouts), [workouts]);
 
   return (
     <section>
       <h2 className="section-heading" style={{ marginBottom: '32px', fontSize: '36px' }}>АНАЛИТИКА</h2>
 
-      {/* Analytics tab selector: Tasks / Sport */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', borderBottom: '1px solid var(--hairline)' }}>
         {(['tasks', 'sport'] as const).map(t => (
           <button key={t} className={`tab-btn ${analyticsTab === t ? 'active' : ''}`} onClick={() => { setAnalyticsTab(t); setActiveChart(0); }}>
@@ -298,320 +113,99 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
       <div key={analyticsTab} className="tab-fade-in">
         {analyticsTab === 'tasks' && (
           <>
-          {/* Chart type toggle */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className="micro-cap" style={{ fontSize: '10px', marginRight: '8px' }}>ТИП ГРАФИКА:</span>
-            {(['bar', 'line', 'area', 'dot'] as ChartType[]).map(t => (
-              <button key={t} className={`btn-ghost btn-ghost-xs ${chartType === t ? '' : ''}`}
-                style={{ background: chartType === t ? 'var(--ghost-hover)' : 'transparent' }}
-                onClick={() => setChartType(t)}>
-                {t === 'bar' ? 'СТОЛБЦЫ' : t === 'line' ? 'ЛИНИИ' : t === 'area' ? 'ОБЛАСТЬ' : 'ТОЧКИ'}
-              </button>
-            ))}
-            <span className="micro-cap" style={{ fontSize: '10px', marginLeft: '16px', marginRight: '8px' }}>ПЕРИОД:</span>
-            <button className={`btn-ghost btn-ghost-xs ${barRange === '7' ? '' : ''}`}
-              style={{ background: barRange === '7' ? 'var(--ghost-hover)' : 'transparent' }}
-              onClick={() => setBarRange('7')}>7 ДНЕЙ</button>
-            <button className={`btn-ghost btn-ghost-xs ${barRange === '30' ? '' : ''}`}
-              style={{ background: barRange === '30' ? 'var(--ghost-hover)' : 'transparent' }}
-              onClick={() => setBarRange('30')}>30 ДНЕЙ</button>
-          </div>
-
-          {/* Chart selector */}
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            {charts.map((c, i) => (
-              <button key={i} className={`tab-btn ${activeChart === i ? 'active' : ''}`} onClick={() => setActiveChart(i)}>
-                {c.title}
-              </button>
-            ))}
-          </div>
-
-          {/* Active chart */}
-          <div className="chart-container" style={{ marginBottom: '24px' }}>
-            <h3 className="micro-cap" style={{ marginBottom: '20px' }}>{charts[activeChart].title}</h3>
-            {renderChart(charts[activeChart].data, charts[activeChart].key, charts[activeChart].color)}
-          </div>
-
-          {/* Pie chart - category distribution */}
-          <div className="chart-container" ref={catPieRef} style={{ outline: 'none' }} tabIndex={-1}>
-            <h3 className="micro-cap" style={{ marginBottom: '20px' }}>РАСПРЕДЕЛЕНИЕ ПО КАТЕГОРИЯМ</h3>
-            {categoryData.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Нет данных для отображения</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    isAnimationActive={false}
-                    labelLine={false}
-                    rootTabIndex={-1}
-                    onMouseEnter={(_data, index) => {
-                      if (!catPieRef.current) return;
-                      const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-                      if (sectors[index]) {
-                        const p = sectors[index].querySelector('path');
-                        if (p) { p.setAttribute('stroke', 'rgba(255, 255, 255, 1)'); p.setAttribute('stroke-width', '3'); }
-                      }
-                    }}
-                    onMouseLeave={(_data, index) => {
-                      if (!catPieRef.current) return;
-                      const sectors = catPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-                      if (sectors[index]) {
-                        const p = sectors[index].querySelector('path');
-                        if (p) { p.removeAttribute('stroke'); p.removeAttribute('stroke-width'); }
-                      }
-                    }}
-                    onMouseDown={(_data, index, e: any) => {
-                      e.preventDefault();
-                      const d = categoryData[index];
-                      if (d) {
-                        setPopupSort('date'); setPopupSortDir('desc');
-                        setPopupData({ emoji: d.emoji, name: d.name, color: d.color, xp: d.xp, items: d.tasks });
-                      } else {
-                        setPopupData(null);
-                      }
-                    }}
-                    label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
-                      const RADIAN = Math.PI / 180;
-                      const cos = Math.cos(-midAngle * RADIAN);
-                      const sin = Math.sin(-midAngle * RADIAN);
-                      const lineEndR = outerRadius * 1.4;
-                      const textR = outerRadius * 1.6;
-                      const ex = cx + lineEndR * cos;
-                      const ey = cy + lineEndR * sin;
-                      const tx = cx + textR * cos;
-                      const ty = cy + textR * sin;
-                      const color = payload?.color || '#ffffff';
-                      const textAnchor = tx > cx ? 'start' : 'end';
-                      return (
-                        <g>
-                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
-                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
-                            {payload?.emoji || ''} {payload?.name} ({payload?.value})
-                          </text>
-                        </g>
-                      );
-                    }}
-                  >
-                    {categoryData.map((d, i) => (
-                      <Cell key={d.name || i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </>
-      )}
-
-      {analyticsTab === 'sport' && (
-        <>
-          {/* Sport stats */}
-          <div style={{ display: 'flex', gap: '24px', marginBottom: '32px', flexWrap: 'wrap' }}>
-            <div className="card-panel" style={{ padding: '16px 24px', textAlign: 'center', minWidth: '100px', flex: 1 }}>
-              <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700 }}>{totalWorkoutStats.total}</div>
-              <div className="micro-cap" style={{ marginTop: '4px' }}>Всего тренировок</div>
-            </div>
-            <div className="card-panel" style={{ padding: '16px 24px', textAlign: 'center', minWidth: '100px', flex: 1 }}>
-              <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700 }}>{totalWorkoutStats.completed}</div>
-              <div className="micro-cap" style={{ marginTop: '4px' }}>Выполнено</div>
-            </div>
-            <div className="card-panel" style={{ padding: '16px 24px', textAlign: 'center', minWidth: '100px', flex: 1 }}>
-              <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700 }}>{totalWorkoutStats.totalDuration} мин</div>
-              <div className="micro-cap" style={{ marginTop: '4px' }}>Общее время</div>
-            </div>
-            <div className="card-panel" style={{ padding: '16px 24px', textAlign: 'center', minWidth: '100px', flex: 1 }}>
-              <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700 }}>+{totalWorkoutStats.totalXP}</div>
-              <div className="micro-cap" style={{ marginTop: '4px' }}>XP</div>
-            </div>
-          </div>
-
-          {/* Chart type toggle */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span className="micro-cap" style={{ fontSize: '10px', marginRight: '8px' }}>ТИП ГРАФИКА:</span>
-            {(['bar', 'line', 'area', 'dot'] as ChartType[]).map(t => (
-              <button key={t} className={`btn-ghost btn-ghost-xs ${chartType === t ? '' : ''}`}
-                style={{ background: chartType === t ? 'var(--ghost-hover)' : 'transparent' }}
-                onClick={() => setChartType(t)}>
-                {t === 'bar' ? 'СТОЛБЦЫ' : t === 'line' ? 'ЛИНИИ' : t === 'area' ? 'ОБЛАСТЬ' : 'ТОЧКИ'}
-              </button>
-            ))}
-            <span className="micro-cap" style={{ fontSize: '10px', marginLeft: '16px', marginRight: '8px' }}>ПЕРИОД:</span>
-            <button className={`btn-ghost btn-ghost-xs ${barRange === '7' ? '' : ''}`}
-              style={{ background: barRange === '7' ? 'var(--ghost-hover)' : 'transparent' }}
-              onClick={() => setBarRange('7')}>7 ДНЕЙ</button>
-            <button className={`btn-ghost btn-ghost-xs ${barRange === '30' ? '' : ''}`}
-              style={{ background: barRange === '30' ? 'var(--ghost-hover)' : 'transparent' }}
-              onClick={() => setBarRange('30')}>30 ДНЕЙ</button>
-          </div>
-
-          {/* Chart selector */}
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            {sportCharts.map((c, i) => (
-              <button key={i} className={`tab-btn ${activeChart === i ? 'active' : ''}`} onClick={() => setActiveChart(i)}>
-                {c.title}
-              </button>
-            ))}
-          </div>
-
-          {/* Active chart */}
-          <div className="chart-container" style={{ marginBottom: '24px' }}>
-            <h3 className="micro-cap" style={{ marginBottom: '20px' }}>{sportCharts[activeChart].title}</h3>
-            {renderChart(sportCharts[activeChart].data, sportCharts[activeChart].key, sportCharts[activeChart].color)}
-          </div>
-
-          {/* Pie chart - workout type distribution */}
-          <div className="chart-container" ref={sportPieRef} style={{ outline: 'none' }} tabIndex={-1}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 className="micro-cap" style={{ margin: 0 }}>РАСПРЕДЕЛЕНИЕ ПО ТИПАМ ТРЕНИРОВОК</h3>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button className="btn-ghost btn-ghost-xs" 
-                  style={{ background: sportPieMode === 'count' ? 'var(--ghost-hover)' : 'transparent' }} 
-                  onClick={() => setSportPieMode('count')}>КОЛИЧЕСТВО</button>
-                <button className="btn-ghost btn-ghost-xs" 
-                  style={{ background: sportPieMode === 'duration' ? 'var(--ghost-hover)' : 'transparent' }} 
-                  onClick={() => setSportPieMode('duration')}>ВРЕМЯ</button>
-              </div>
-            </div>
-            {workoutTypeData.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>Нет данных для отображения</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart>
-                  <Pie
-                    data={animatedWorkoutTypeData}
-                    dataKey="currentValue"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    isAnimationActive={false}
-                    labelLine={false}
-                    rootTabIndex={-1}
-                    onMouseEnter={(_data, index) => {
-                      if (!sportPieRef.current) return;
-                      const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-                      if (sectors[index]) {
-                        const p = sectors[index].querySelector('path');
-                        if (p) { p.setAttribute('stroke', 'rgba(255, 255, 255, 1)'); p.setAttribute('stroke-width', '3'); }
-                      }
-                    }}
-                    onMouseLeave={(_data, index) => {
-                      if (!sportPieRef.current) return;
-                      const sectors = sportPieRef.current.querySelectorAll<SVGGElement>('.recharts-pie-sector');
-                      if (sectors[index]) {
-                        const p = sectors[index].querySelector('path');
-                        if (p) { p.removeAttribute('stroke'); p.removeAttribute('stroke-width'); }
-                      }
-                    }}
-                    onMouseDown={(_data, index, e: any) => {
-                      e.preventDefault();
-                      const d = workoutTypeData[index];
-                      if (d) {
-                        setPopupSort('date'); setPopupSortDir('desc');
-                        setPopupData({ emoji: d.icon, name: d.name, color: d.color, xp: d.xp, items: d.tasks });
-                      } else {
-                        setPopupData(null);
-                      }
-                    }}
-                    label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
-                      const RADIAN = Math.PI / 180;
-                      const cos = Math.cos(-midAngle * RADIAN);
-                      const sin = Math.sin(-midAngle * RADIAN);
-                      const lineEndR = outerRadius * 1.4;
-                      const textR = outerRadius * 1.6;
-                      const ex = cx + lineEndR * cos;
-                      const ey = cy + lineEndR * sin;
-                      const tx = cx + textR * cos;
-                      const ty = cy + textR * sin;
-                      const color = payload?.color || '#ffffff';
-                      const textAnchor = tx > cx ? 'start' : 'end';
-                      const displayVal = sportPieMode === 'duration' ? `${payload?.duration || 0} мин` : `${payload?.value || 0}`;
-                      return (
-                        <g>
-                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
-                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
-                            {payload?.icon || ''} {payload?.name} ({displayVal})
-                          </text>
-                        </g>
-                      );
-                    }}
-                  >
-                    {animatedWorkoutTypeData.map((d, i) => (
-                      <Cell key={d.name || i} fill={d.color} stroke="none" />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </>
-      )}
-      </div>
-
-      {popupData && (
-        <div className="modal-overlay" onClick={closePopup}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', outline: 'none' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 className="micro-cap" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>{popupData.emoji}</span>
-                <span style={{ color: popupData.color }}>{popupData.name}</span>
-              </h3>
-              <button className="btn-ghost btn-ghost-xs" onClick={closePopup}>✕</button>
-            </div>
-            <div className="card-panel" style={{ padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, color: popupData.color }}>
-                +{popupData.xp} XP
-              </div>
-              <div className="micro-cap" style={{ marginTop: '4px' }}>ОПЫТА</div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--text-soft)' }}>
-                Задач: <strong>{popupData.items.length}</strong>
-              </span>
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                <button className="btn-ghost btn-ghost-xs" style={{ background: popupSort === 'date' ? 'var(--ghost-hover)' : 'transparent', outline: 'none' }}
-                  onClick={() => setPopupSort('date')}>ПО ДАТЕ</button>
-                <button className="btn-ghost btn-ghost-xs" style={{ background: popupSort === 'xp' ? 'var(--ghost-hover)' : 'transparent', outline: 'none' }}
-                  onClick={() => setPopupSort('xp')}>ПО XP</button>
-                <button className="btn-ghost btn-ghost-xs" style={{ outline: 'none', fontSize: '14px', padding: '2px 6px' }}
-                  onClick={() => setPopupSortDir(d => d === 'asc' ? 'desc' : 'asc')}
-                  title={popupSortDir === 'asc' ? 'По возрастанию' : 'По убыванию'}>
-                  {popupSortDir === 'asc' ? '↑' : '↓'}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="micro-cap" style={{ fontSize: '10px', marginRight: '8px' }}>ТИП ГРАФИКА:</span>
+              {(['bar', 'line', 'area', 'dot'] as ChartType[]).map(t => (
+                <button key={t} className="btn-ghost btn-ghost-xs" style={{ background: chartType === t ? 'var(--ghost-hover)' : 'transparent' }} onClick={() => setChartType(t)}>
+                  {t === 'bar' ? 'СТОЛБЦЫ' : t === 'line' ? 'ЛИНИИ' : t === 'area' ? 'ОБЛАСТЬ' : 'ТОЧКИ'}
                 </button>
-              </div>
+              ))}
+              <span className="micro-cap" style={{ fontSize: '10px', marginLeft: '16px', marginRight: '8px' }}>ПЕРИОД:</span>
+              <button className="btn-ghost btn-ghost-xs" style={{ background: barRange === '7' ? 'var(--ghost-hover)' : 'transparent' }} onClick={() => setBarRange('7')}>7 ДНЕЙ</button>
+              <button className="btn-ghost btn-ghost-xs" style={{ background: barRange === '30' ? 'var(--ghost-hover)' : 'transparent' }} onClick={() => setBarRange('30')}>30 ДНЕЙ</button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
-              {[...popupData.items].sort((a, b) => {
-                const dir = popupSortDir === 'asc' ? 1 : -1;
-                return popupSort === 'date' ? dir * a.date.localeCompare(b.date) : dir * (a.xp - b.xp);
-              }).map((item, i) => (
-                <div key={i} style={{
-                  padding: '8px 12px', background: 'var(--surface-hover)', borderRadius: '4px',
-                  fontSize: '13px', color: 'var(--text-primary)',
-                  borderLeft: `3px solid ${popupData.color}`,
-                }}>
-                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>{item.title}</div>
-                  <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-soft)', flexWrap: 'wrap' }}>
-                    <span>{new Date(item.date).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                    <span>+{item.xp} XP</span>
-                    {item.pomodoro > 0 && <span>🍅 ×{item.pomodoro}</span>}
-                    {item.duration !== undefined && item.duration > 0 && <span>⏱ {item.duration} мин</span>}
-                  </div>
-                </div>
+
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              {charts.map((c, i) => (
+                <button key={i} className={`tab-btn ${activeChart === i ? 'active' : ''}`} onClick={() => setActiveChart(i)}>
+                  {c.title}
+                </button>
               ))}
             </div>
-            <button className="btn-ghost btn-ghost-sm" style={{ marginTop: '20px', width: '100%', outline: 'none' }} onClick={closePopup}>
-              ЗАКРЫТЬ
-            </button>
-          </div>
-        </div>
-      )}
+
+            <div className="chart-container" style={{ marginBottom: '24px' }}>
+              <h3 className="micro-cap" style={{ marginBottom: '20px' }}>{charts[activeChart].title}</h3>
+              <AnalyticsCharts data={charts[activeChart].data} dataKey={charts[activeChart].key} color={charts[activeChart].color} chartType={chartType} />
+            </div>
+
+            <AnalyticsPieSection
+              data={categoryData}
+              title="РАСПРЕДЕЛЕНИЕ ПО КАТЕГОРИЯМ"
+              pieRef={catPieRef}
+              onSliceClick={d => setPopupData({ emoji: d.emoji, name: d.name, color: d.color, xp: d.xp, items: d.tasks })}
+            />
+          </>
+        )}
+
+        {analyticsTab === 'sport' && (
+          <>
+            <div style={{ display: 'flex', gap: '24px', marginBottom: '32px', flexWrap: 'wrap' }}>
+              <div className="card-panel" style={{ padding: '16px 24px', textAlign: 'center', minWidth: '100px', flex: 1 }}>
+                <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700 }}>{totalWorkoutStats.total}</div>
+                <div className="micro-cap" style={{ marginTop: '4px' }}>Всего тренировок</div>
+              </div>
+              <div className="card-panel" style={{ padding: '16px 24px', textAlign: 'center', minWidth: '100px', flex: 1 }}>
+                <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700 }}>{totalWorkoutStats.completed}</div>
+                <div className="micro-cap" style={{ marginTop: '4px' }}>Выполнено</div>
+              </div>
+              <div className="card-panel" style={{ padding: '16px 24px', textAlign: 'center', minWidth: '100px', flex: 1 }}>
+                <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700 }}>{totalWorkoutStats.totalDuration} мин</div>
+                <div className="micro-cap" style={{ marginTop: '4px' }}>Общее время</div>
+              </div>
+              <div className="card-panel" style={{ padding: '16px 24px', textAlign: 'center', minWidth: '100px', flex: 1 }}>
+                <div style={{ fontSize: '28px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700 }}>+{totalWorkoutStats.totalXP}</div>
+                <div className="micro-cap" style={{ marginTop: '4px' }}>XP</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className="micro-cap" style={{ fontSize: '10px', marginRight: '8px' }}>ТИП ГРАФИКА:</span>
+              {(['bar', 'line', 'area', 'dot'] as ChartType[]).map(t => (
+                <button key={t} className="btn-ghost btn-ghost-xs" style={{ background: chartType === t ? 'var(--ghost-hover)' : 'transparent' }} onClick={() => setChartType(t)}>
+                  {t === 'bar' ? 'СТОЛБЦЫ' : t === 'line' ? 'ЛИНИИ' : t === 'area' ? 'ОБЛАСТЬ' : 'ТОЧКИ'}
+                </button>
+              ))}
+              <span className="micro-cap" style={{ fontSize: '10px', marginLeft: '16px', marginRight: '8px' }}>ПЕРИОД:</span>
+              <button className="btn-ghost btn-ghost-xs" style={{ background: barRange === '7' ? 'var(--ghost-hover)' : 'transparent' }} onClick={() => setBarRange('7')}>7 ДНЕЙ</button>
+              <button className="btn-ghost btn-ghost-xs" style={{ background: barRange === '30' ? 'var(--ghost-hover)' : 'transparent' }} onClick={() => setBarRange('30')}>30 ДНЕЙ</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              {sportCharts.map((c, i) => (
+                <button key={i} className={`tab-btn ${activeChart === i ? 'active' : ''}`} onClick={() => setActiveChart(i)}>
+                  {c.title}
+                </button>
+              ))}
+            </div>
+
+            <div className="chart-container" style={{ marginBottom: '24px' }}>
+              <h3 className="micro-cap" style={{ marginBottom: '20px' }}>{sportCharts[activeChart].title}</h3>
+              <AnalyticsCharts data={sportCharts[activeChart].data} dataKey={sportCharts[activeChart].key} color={sportCharts[activeChart].color} chartType={chartType} />
+            </div>
+
+            <AnalyticsPieSection
+              data={animatedWorkoutTypeData}
+              title="РАСПРЕДЕЛЕНИЕ ПО ТИПАМ ТРЕНИРОВОК"
+              pieRef={sportPieRef}
+              sportPieMode={sportPieMode}
+              onModeChange={setSportPieMode}
+              onSliceClick={d => setPopupData({ emoji: d.icon, name: d.name, color: d.color, xp: d.xp, items: d.tasks })}
+            />
+          </>
+        )}
+      </div>
+
+      {popupData && <AnalyticsPopupModal popupData={popupData} onClose={closePopup} />}
     </section>
   );
 }

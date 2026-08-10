@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Book } from '../types';
+import { BookCard } from './books/BookCard';
 
 interface Props {
   books: Book[];
@@ -20,7 +21,6 @@ const INITIAL_FORM = {
 export default function BooksSection({ books, onAdd, onUpdate, onDelete }: Props) {
   const [subtab, setSubtab] = useState<'reading' | 'completed' | 'planned'>('reading');
   const [showForm, setShowForm] = useState(false);
-  
   const [form, setForm] = useState(INITIAL_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -51,7 +51,7 @@ export default function BooksSection({ books, onAdd, onUpdate, onDelete }: Props
     if (!form.title.trim()) return;
 
     if (editingId) {
-      onUpdate(editingId, { ...form, readPages: form.totalPages }); // sync readPages with total if needed or keep default
+      onUpdate(editingId, { ...form, readPages: form.totalPages });
     } else {
       onAdd({ ...form, readPages: form.totalPages });
     }
@@ -148,68 +148,19 @@ export default function BooksSection({ books, onAdd, onUpdate, onDelete }: Props
       <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>
         {filteredBooks.length === 0 ? (
           <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            В этом разделе пока нет книг.
+            <p style={{ fontSize: '48px', marginBottom: '12px' }}>📚</p>
+            <p className="micro-cap" style={{ marginBottom: '4px' }}>НЕТ КНИГ В ЭТОМ РАЗДЕЛЕ</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {filteredBooks.map(book => (
-              <div key={book.id} style={{
-                display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 24px',
-                borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap',
-                borderLeft: book.status === 'completed' ? '3px solid #5aaa6f' : book.status === 'reading' ? '3px solid #54a0ff' : '3px solid transparent'
-              }}>
-                <span style={{ fontSize: '28px' }}>📖</span>
-
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {book.title}
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-soft)', marginBottom: '8px' }}>
-                    {book.author || 'Автор не указан'}
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {book.status === 'completed' ? (
-                      <span className="badge" style={{ color: '#5aaa6f', borderColor: '#5aaa6f' }}>✓ ПРОЧИТАНО</span>
-                    ) : book.status === 'reading' ? (
-                      <span className="badge" style={{ color: '#54a0ff', borderColor: '#54a0ff' }}>⏳ ЧИТАЮ</span>
-                    ) : (
-                      <span className="badge">В ПЛАНАХ</span>
-                    )}
-                    
-                    {book.totalPages > 0 && (
-                      <span className="badge" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>{book.totalPages} стр.</span>
-                      </span>
-                    )}
-
-                    {book.status === 'completed' && book.rating > 0 && (
-                      <span className="badge">{'⭐'.repeat(book.rating)}</span>
-                    )}
-                    
-                    {book.xp > 0 && (
-                      <span className="badge">⚡ +{book.xp} XP</span>
-                    )}
-                  </div>
-                  
-                  {book.review && (
-                    <div style={{ marginTop: '12px', padding: '10px 14px', background: 'var(--surface-hover)', borderRadius: '6px', borderLeft: '2px solid var(--hairline)', fontSize: '13px', color: 'var(--text-soft)', whiteSpace: 'pre-wrap' }}>
-                      {book.review}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {book.status !== 'completed' && (
-                    <button className="btn-ghost btn-ghost-xs" style={{ color: '#5aaa6f', borderColor: '#5aaa6f' }}
-                      onClick={() => onUpdate(book.id, { status: 'completed' })} title="Завершить">✓</button>
-                  )}
-                  <button className="btn-ghost btn-ghost-xs" onClick={() => startEdit(book)}>РЕД</button>
-                  <button className="btn-ghost btn-ghost-xs" onClick={() => onDelete(book.id)}>УДЛ</button>
-                </div>
-              </div>
-            ))}
-          </div>
+          filteredBooks.map(b => (
+            <BookCard
+              key={b.id}
+              book={b}
+              onEdit={startEdit}
+              onDelete={onDelete}
+              onStatusChange={(id, status) => onUpdate(id, { status, completedAt: status === 'completed' ? new Date().toISOString() : null })}
+            />
+          ))
         )}
       </div>
     </section>
