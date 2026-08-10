@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Task, Category, PomodoroSession, ChartType, Workout } from '../types';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ScatterChart, Scatter, Legend } from 'recharts';
 
@@ -45,6 +45,77 @@ function loadCustomTypes(): WorkoutTypeDef[] {
     }
   } catch { }
   return [];
+}
+
+function useAnimatedPieData<T extends { name: string; value: number; duration: number }>(
+  targetData: T[],
+  mode: 'count' | 'duration',
+  durationMs: number = 350
+) {
+  const [animatedData, setAnimatedData] = useState<Array<T & { currentValue: number }>>(() =>
+    targetData.map(d => ({ ...d, currentValue: mode === 'count' ? d.value : d.duration }))
+  );
+
+  const animRef = useRef<number | null>(null);
+  const currentValuesRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    animatedData.forEach(d => {
+      currentValuesRef.current[d.name] = d.currentValue;
+    });
+  });
+
+  useEffect(() => {
+    if (targetData.length === 0) return;
+
+    const startValues: Record<string, number> = {};
+    targetData.forEach(d => {
+      startValues[d.name] = currentValuesRef.current[d.name] ?? (mode === 'count' ? d.duration : d.value);
+    });
+
+    const targetValues: Record<string, number> = {};
+    targetData.forEach(d => {
+      targetValues[d.name] = mode === 'count' ? d.value : d.duration;
+    });
+
+    const startTime = performance.now();
+
+    if (animRef.current) {
+      cancelAnimationFrame(animRef.current);
+    }
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / durationMs, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+
+      const nextData = targetData.map(d => {
+        const start = startValues[d.name] ?? 0;
+        const target = targetValues[d.name] ?? 0;
+        const currentVal = start + (target - start) * ease;
+        return {
+          ...d,
+          currentValue: currentVal
+        };
+      });
+
+      setAnimatedData(nextData);
+
+      if (progress < 1) {
+        animRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    animRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animRef.current) {
+        cancelAnimationFrame(animRef.current);
+      }
+    };
+  }, [targetData, mode, durationMs]);
+
+  return animatedData;
 }
 
 export default function Analytics({ tasks, pomodoroHistory, categories, workouts }: Props) {
@@ -174,9 +245,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
     return Object.values(map).filter(d => d.value > 0);
   }, [workouts, allWorkoutTypeDefs]);
 
-  const pieWorkoutTypeData = useMemo(() => {
-    return workoutTypeData.map(d => ({ ...d, currentValue: sportPieMode === 'count' ? d.value : d.duration }));
-  }, [workoutTypeData, sportPieMode]);
+  const animatedWorkoutTypeData = useAnimatedPieData(workoutTypeData, sportPieMode, 350);
 
   const charts = [
     { title: 'ВЫПОЛНЕНИЕ ЗАДАЧ ПО ДНЯМ', data: dailyData, key: 'tasks', color: 'var(--text-primary)' },
@@ -277,10 +346,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    isAnimationActive={true}
-                    animationDuration={400}
+                    isAnimationActive={false}
                     labelLine={false}
-                    label={false}
                     rootTabIndex={-1}
                     onMouseEnter={(_data, index) => {
                       if (!catPieRef.current) return;
@@ -308,23 +375,6 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                         setPopupData(null);
                       }
                     }}
-                  >
-                    {categoryData.map((d, i) => (
-                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
-                    ))}
-                  </Pie>
-                  <Pie
-                    data={categoryData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    isAnimationActive={false}
-                    fill="transparent"
-                    stroke="none"
-                    labelLine={false}
-                    style={{ pointerEvents: 'none' }}
                     label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
                       const RADIAN = Math.PI / 180;
                       const cos = Math.cos(-midAngle * RADIAN);
@@ -339,8 +389,8 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       const textAnchor = tx > cx ? 'start' : 'end';
                       return (
                         <g>
-                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" style={{ transition: 'all 0.4s ease' }} />
-                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600} style={{ transition: 'all 0.4s ease' }}>
+                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
+                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
                             {payload?.emoji || ''} {payload?.name} ({payload?.value})
                           </text>
                         </g>
@@ -348,7 +398,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                     }}
                   >
                     {categoryData.map((d, i) => (
-                      <Cell key={i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
+                      <Cell key={d.name || i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" />
                     ))}
                   </Pie>
                 </PieChart>
@@ -433,16 +483,14 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
               <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <Pie
-                    data={pieWorkoutTypeData}
+                    data={animatedWorkoutTypeData}
                     dataKey="currentValue"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    isAnimationActive={true}
-                    animationDuration={400}
+                    isAnimationActive={false}
                     labelLine={false}
-                    label={false}
                     rootTabIndex={-1}
                     onMouseEnter={(_data, index) => {
                       if (!sportPieRef.current) return;
@@ -470,24 +518,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                         setPopupData(null);
                       }
                     }}
-                  >
-                    {workoutTypeData.map((d, i) => (
-                      <Cell key={i} fill={d.color} stroke="none" />
-                    ))}
-                  </Pie>
-                  <Pie
-                    data={pieWorkoutTypeData}
-                    dataKey="currentValue"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    isAnimationActive={false}
-                    fill="transparent"
-                    stroke="none"
-                    labelLine={false}
-                    style={{ pointerEvents: 'none' }}
-                    label={({ cx, cy, midAngle, outerRadius, payload, value }: any) => {
+                    label={({ cx, cy, midAngle, outerRadius, payload }: any) => {
                       const RADIAN = Math.PI / 180;
                       const cos = Math.cos(-midAngle * RADIAN);
                       const sin = Math.sin(-midAngle * RADIAN);
@@ -499,18 +530,19 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
                       const ty = cy + textR * sin;
                       const color = payload?.color || '#ffffff';
                       const textAnchor = tx > cx ? 'start' : 'end';
+                      const displayVal = sportPieMode === 'duration' ? `${payload?.duration || 0} мин` : `${payload?.value || 0}`;
                       return (
                         <g>
-                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" style={{ transition: 'all 0.4s ease' }} />
-                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600} style={{ transition: 'all 0.4s ease' }}>
-                            {payload?.icon || ''} {payload?.name} ({value}{sportPieMode === 'duration' ? ' мин' : ''})
+                          <path d={`M${cx + outerRadius * cos},${cy + outerRadius * sin}L${ex},${ey}`} stroke={color} strokeWidth={1.5} fill="none" />
+                          <text x={tx} y={ty} fill={color} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fontWeight={600}>
+                            {payload?.icon || ''} {payload?.name} ({displayVal})
                           </text>
                         </g>
                       );
                     }}
                   >
-                    {workoutTypeData.map((d, i) => (
-                      <Cell key={i} fill={d.color} stroke="none" />
+                    {animatedWorkoutTypeData.map((d, i) => (
+                      <Cell key={d.name || i} fill={d.color} stroke="none" />
                     ))}
                   </Pie>
                 </PieChart>
