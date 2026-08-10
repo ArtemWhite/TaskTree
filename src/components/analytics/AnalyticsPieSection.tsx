@@ -106,7 +106,7 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
                     : `${payload?.value || 0}`;
 
                 return (
-                  <g style={{ opacity: activeIndex === -1 || isActive ? 1 : 0.7 }}>
+                  <g style={{ transition: 'opacity 0.2s ease', opacity: activeIndex === -1 || isActive ? 1 : 0.4 }}>
                     <path
                       d={`M${cx + currentOuterR * cos},${cy + currentOuterR * sin}L${ex},${ey}`}
                       stroke={color}
@@ -129,7 +129,16 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
               }}
             >
               {data.map((d, i) => (
-                <Cell key={d.name || i} fill={d.color || CHART_COLORS[i % CHART_COLORS.length]} stroke="none" style={{ cursor: 'pointer' }} />
+                <Cell
+                  key={d.name || i}
+                  fill={d.color || CHART_COLORS[i % CHART_COLORS.length]}
+                  stroke="none"
+                  style={{
+                    cursor: 'pointer',
+                    opacity: activeIndex === -1 || i === activeIndex ? 1 : 0.35,
+                    transition: 'opacity 0.2s ease',
+                  }}
+                />
               ))}
             </Pie>
 
