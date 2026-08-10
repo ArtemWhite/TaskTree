@@ -11,10 +11,10 @@ interface Props {
 }
 
 export default function PomodoroModal({ task, settings, onClose, onUpdateSettings, onSessionFinished, restoreSignal }: Props) {
-  const totalSeconds = settings.pomodoroWorkMinutes * 60;
+  const totalMs = settings.pomodoroWorkMinutes * 60 * 1000;
   const [endTime, setEndTime] = useState<number | null>(null);
-  const [pausedRemaining, setPausedRemaining] = useState(totalSeconds);
-  const [timeLeft, setTimeLeft] = useState(totalSeconds);
+  const [pausedRemainingMs, setPausedRemainingMs] = useState(totalMs);
+  const [remainingMs, setRemainingMs] = useState(totalMs);
   const [isRunning, setIsRunning] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -28,7 +28,7 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
   useEffect(() => { minimizedRef.current = minimized; }, [minimized]);
   useEffect(() => { setMinimized(false); }, [restoreSignal]);
 
-  // Timestamp-based timer — immune to browser throttling
+  // Timestamp-based high-frequency timer (50ms update rate) for silky smooth ring movement
   useEffect(() => {
     if (!isRunning) {
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
@@ -37,19 +37,20 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
 
     intervalRef.current = setInterval(() => {
       const now = Date.now();
-      const remaining = Math.max(0, Math.round(((endTime ?? now) - now) / 1000));
-      setTimeLeft(remaining);
+      const currentEndTime = endTime ?? now;
+      const left = Math.max(0, currentEndTime - now);
+      setRemainingMs(left);
 
-      if (remaining <= 0 && !finishedRef.current) {
+      if (left <= 0 && !finishedRef.current) {
         finishedRef.current = true;
         setIsRunning(false);
         setIsFinished(true);
         setEndTime(null);
-        setPausedRemaining(0);
+        setPausedRemainingMs(0);
         onSessionFinished(minimizedRef.current, settings.pomodoroBonusXP);
         if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       }
-    }, 250);
+    }, 50);
 
     return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
   }, [isRunning, endTime, settings.pomodoroBonusXP, onSessionFinished]);
@@ -60,39 +61,39 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
   useEffect(() => {
     setCustomMin(settings.pomodoroWorkMinutes);
     if (isRunningRef.current) return;
-    const sec = settings.pomodoroWorkMinutes * 60;
-    setPausedRemaining(sec);
-    setTimeLeft(sec);
+    const ms = settings.pomodoroWorkMinutes * 60 * 1000;
+    setPausedRemainingMs(ms);
+    setRemainingMs(ms);
     setEndTime(null);
     finishedRef.current = false;
   }, [settings.pomodoroWorkMinutes]);
 
   const startTimer = () => {
-    const sec = (pausedRemaining > 0 && pausedRemaining < settings.pomodoroWorkMinutes * 60)
-      ? pausedRemaining
-      : settings.pomodoroWorkMinutes * 60;
+    const ms = (pausedRemainingMs > 0 && pausedRemainingMs < settings.pomodoroWorkMinutes * 60 * 1000)
+      ? pausedRemainingMs
+      : settings.pomodoroWorkMinutes * 60 * 1000;
 
     finishedRef.current = false;
     setIsFinished(false);
-    setPausedRemaining(sec);
-    setTimeLeft(sec);
-    setEndTime(Date.now() + sec * 1000);
+    setPausedRemainingMs(ms);
+    setRemainingMs(ms);
+    setEndTime(Date.now() + ms);
     setIsRunning(true);
   };
 
   const startNewSession = () => {
-    const sec = settings.pomodoroWorkMinutes * 60;
+    const ms = settings.pomodoroWorkMinutes * 60 * 1000;
     finishedRef.current = false;
     setIsFinished(false);
-    setPausedRemaining(sec);
-    setTimeLeft(sec);
-    setEndTime(Date.now() + sec * 1000);
+    setPausedRemainingMs(ms);
+    setRemainingMs(ms);
+    setEndTime(Date.now() + ms);
     setIsRunning(true);
   };
 
   const pauseTimer = () => {
     setIsRunning(false);
-    setPausedRemaining(timeLeft);
+    setPausedRemainingMs(remainingMs);
     setEndTime(null);
   };
 
@@ -100,15 +101,16 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
     setIsRunning(false);
     setIsFinished(false);
     finishedRef.current = false;
-    const sec = settings.pomodoroWorkMinutes * 60;
-    setPausedRemaining(sec);
-    setTimeLeft(sec);
+    const ms = settings.pomodoroWorkMinutes * 60 * 1000;
+    setPausedRemainingMs(ms);
+    setRemainingMs(ms);
     setEndTime(null);
   };
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-  const progress = 1 - timeLeft / (settings.pomodoroWorkMinutes * 60);
+  const displaySec = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(displaySec / 60);
+  const seconds = displaySec % 60;
+  const progress = isFinished ? 1 : Math.min(1, Math.max(0, 1 - remainingMs / totalMs));
 
   const handleClose = () => {
     setMinimized(false);
@@ -166,14 +168,14 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
           ПОМОДОРО-СЕССИЙ: {task.pomodoroCount || 0}
         </div>
 
-        {/* Timer circle */}
+        {/* Timer circle with silky smooth continuous 50ms animation */}
         <div style={{ position: 'relative', width: '180px', height: '180px', margin: '0 auto 24px' }}>
           <svg viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
             <circle cx="90" cy="90" r="80" fill="none" stroke="var(--hairline)" strokeWidth="4" />
             <circle cx="90" cy="90" r="80" fill="none" stroke={isFinished ? '#5aaa6f' : 'var(--text-primary)'} strokeWidth="4"
               strokeDasharray={`${2 * Math.PI * 80}`}
               strokeDashoffset={`${2 * Math.PI * 80 * (1 - progress)}`}
-              style={{ transition: 'stroke-dashoffset 0.3s ease-out' }}
+              style={{ transition: isRunning ? 'stroke-dashoffset 0.06s linear' : 'stroke-dashoffset 0.3s ease-out' }}
             />
           </svg>
           <div style={{
@@ -181,7 +183,7 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
             alignItems: 'center', justifyContent: 'center'
           }}>
             <span style={{ fontSize: '42px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, letterSpacing: '1px' }}>
-              {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+              {timeDisplay}
             </span>
           </div>
         </div>
@@ -243,8 +245,8 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
         {!isFinished ? (
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
             {!isRunning ? (
-              <button className="btn-ghost" onClick={startTimer} disabled={timeLeft === 0}>
-                {timeLeft === settings.pomodoroWorkMinutes * 60 ? 'СТАРТ' : 'ПРОДОЛЖИТЬ'}
+              <button className="btn-ghost" onClick={startTimer} disabled={remainingMs === 0}>
+                {remainingMs === settings.pomodoroWorkMinutes * 60 * 1000 ? 'СТАРТ' : 'ПРОДОЛЖИТЬ'}
               </button>
             ) : (
               <button className="btn-ghost" onClick={pauseTimer}>ПАУЗА</button>
