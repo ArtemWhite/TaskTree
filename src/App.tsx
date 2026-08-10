@@ -128,19 +128,21 @@ export default function App() {
   }, []);
 
   const completePomodoro = useCallback((taskId: string, xpEarned: number) => {
-    const task = data.tasks.find(t => t.id === taskId);
-    const taskTitle = task ? task.title : 'Задача';
-    const newSession: PomodoroSession = {
-      id: TaskService.generateId(), taskId, taskTitle,
-      completedAt: new Date().toISOString(), xpEarned
-    };
-    setData(d => ({
-      ...d,
-      pomodoroHistory: [...d.pomodoroHistory, newSession],
-      tasks: d.tasks.map(t => t.id === taskId ? { ...t, pomodoroCount: (t.pomodoroCount || 0) + 1 } : t)
-    }));
-    setPomodoroCompleteToast({ taskId, taskTitle, xp: xpEarned });
-  }, [data.tasks]);
+    setPomodoroTask(prev => prev && prev.id === taskId ? { ...prev, pomodoroCount: (prev.pomodoroCount || 0) + 1 } : prev);
+    setData(d => {
+      const task = d.tasks.find(t => t.id === taskId);
+      const taskTitle = task ? task.title : 'Задача';
+      const newSession: PomodoroSession = {
+        id: TaskService.generateId(), taskId, taskTitle,
+        completedAt: new Date().toISOString(), xpEarned
+      };
+      return {
+        ...d,
+        pomodoroHistory: [...d.pomodoroHistory, newSession],
+        tasks: d.tasks.map(t => t.id === taskId ? { ...t, pomodoroCount: (t.pomodoroCount || 0) + 1 } : t)
+      };
+    });
+  }, []);
 
   const addWorkout = useCallback((workout: Omit<Workout, 'id' | 'createdAt'>) => {
     const newW: Workout = {
@@ -418,7 +420,9 @@ export default function App() {
           onUpdateSettings={s => setData(d => ({ ...d, settings: { ...d.settings, ...s } }))}
           onSessionFinished={(wasMinimized, xp) => {
             completePomodoro(pomodoroTask.id, xp);
-            if (!wasMinimized) setPomodoroTask(null);
+            if (wasMinimized) {
+              setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp });
+            }
           }}
           restoreSignal={pomodoroRestoreSignal}
         />

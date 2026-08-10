@@ -24,6 +24,7 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const minimizedRef = useRef(minimized);
   const finishedRef = useRef(false);
+
   useEffect(() => { minimizedRef.current = minimized; }, [minimized]);
   useEffect(() => { setMinimized(false); }, [restoreSignal]);
 
@@ -33,36 +34,59 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       return;
     }
+
     intervalRef.current = setInterval(() => {
       const now = Date.now();
       const remaining = Math.max(0, Math.round(((endTime ?? now) - now) / 1000));
       setTimeLeft(remaining);
+
       if (remaining <= 0 && !finishedRef.current) {
         finishedRef.current = true;
         setIsRunning(false);
         setIsFinished(true);
+        setEndTime(null);
+        setPausedRemaining(0);
         onSessionFinished(minimizedRef.current, settings.pomodoroBonusXP);
         if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       }
     }, 250);
+
     return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
-  }, [isRunning, endTime]);
+  }, [isRunning, endTime, settings.pomodoroBonusXP, onSessionFinished]);
 
   const isRunningRef = useRef(isRunning);
   useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
 
   useEffect(() => {
     setCustomMin(settings.pomodoroWorkMinutes);
-    if (isRunningRef.current) return; // не трогаем таймер, если запущен
-    setPausedRemaining(settings.pomodoroWorkMinutes * 60);
-    setTimeLeft(settings.pomodoroWorkMinutes * 60);
+    if (isRunningRef.current) return;
+    const sec = settings.pomodoroWorkMinutes * 60;
+    setPausedRemaining(sec);
+    setTimeLeft(sec);
     setEndTime(null);
     finishedRef.current = false;
   }, [settings.pomodoroWorkMinutes]);
 
   const startTimer = () => {
+    const sec = (pausedRemaining > 0 && pausedRemaining < settings.pomodoroWorkMinutes * 60)
+      ? pausedRemaining
+      : settings.pomodoroWorkMinutes * 60;
+
     finishedRef.current = false;
-    setEndTime(Date.now() + pausedRemaining * 1000);
+    setIsFinished(false);
+    setPausedRemaining(sec);
+    setTimeLeft(sec);
+    setEndTime(Date.now() + sec * 1000);
+    setIsRunning(true);
+  };
+
+  const startNewSession = () => {
+    const sec = settings.pomodoroWorkMinutes * 60;
+    finishedRef.current = false;
+    setIsFinished(false);
+    setPausedRemaining(sec);
+    setTimeLeft(sec);
+    setEndTime(Date.now() + sec * 1000);
     setIsRunning(true);
   };
 
@@ -76,8 +100,9 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
     setIsRunning(false);
     setIsFinished(false);
     finishedRef.current = false;
-    setPausedRemaining(settings.pomodoroWorkMinutes * 60);
-    setTimeLeft(settings.pomodoroWorkMinutes * 60);
+    const sec = settings.pomodoroWorkMinutes * 60;
+    setPausedRemaining(sec);
+    setTimeLeft(sec);
     setEndTime(null);
   };
 
@@ -99,55 +124,56 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
   const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   // Minimized floating widget
-  if (minimized && !isFinished) {
+  if (minimized) {
     return (
       <div style={{
         position: 'fixed', bottom: '20px', right: '20px', zIndex: 99,
-        background: 'var(--bg-secondary)', border: '1px solid var(--hairline)',
+        background: 'var(--bg-secondary)', border: `1px solid ${isFinished ? '#5aaa6f' : 'var(--hairline)'}`,
         borderRadius: '32px', padding: '10px 18px',
         display: 'flex', alignItems: 'center', gap: '12px',
         cursor: 'pointer', animation: 'grow 0.3s ease-out',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       }} onClick={() => setMinimized(false)}>
         <span style={{ fontSize: '14px' }}>🍅</span>
         <span style={{
           fontSize: '20px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif',
-          fontWeight: 700, letterSpacing: '1px', color: 'var(--text-primary)',
-        }}>{timeDisplay}</span>
+          fontWeight: 700, letterSpacing: '1px', color: isFinished ? '#5aaa6f' : 'var(--text-primary)',
+        }}>{isFinished ? 'ГОТОВО!' : timeDisplay}</span>
         <span style={{
           fontSize: '12px', color: 'var(--text-muted)', maxWidth: '120px',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{task.title}</span>
         <button className="btn-ghost btn-ghost-xs"
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          onClick={(e) => { e.stopPropagation(); handleClose(); }}
           title="Завершить">✕</button>
       </div>
     );
   }
 
   return (
-    <div className="modal-overlay" onClick={() => { if (!isFinished) { setMinimized(true); } else { onClose(); } }}>
+    <div className="modal-overlay" onClick={() => { if (!isFinished) { setMinimized(true); } else { handleClose(); } }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', minWidth: '380px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <h3 className="micro-cap" style={{ margin: 0 }}>🍅 ПОМОДОРО</h3>
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
             <button className="btn-ghost btn-ghost-xs" onClick={() => setMinimized(true)} title="Свернуть">_</button>
-            <button className="btn-ghost btn-ghost-xs" onClick={onClose}>✕</button>
+            <button className="btn-ghost btn-ghost-xs" onClick={handleClose}>✕</button>
           </div>
         </div>
 
         <p style={{ fontSize: '14px', color: 'var(--text-soft)', marginBottom: '8px' }}>{task.title}</p>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '24px', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
-          ПОМОДОРО-СЕССИЙ: {task.pomodoroCount}
+          ПОМОДОРО-СЕССИЙ: {task.pomodoroCount || 0}
         </div>
 
         {/* Timer circle */}
         <div style={{ position: 'relative', width: '180px', height: '180px', margin: '0 auto 24px' }}>
           <svg viewBox="0 0 180 180" style={{ transform: 'rotate(-90deg)' }}>
             <circle cx="90" cy="90" r="80" fill="none" stroke="var(--hairline)" strokeWidth="4" />
-            <circle cx="90" cy="90" r="80" fill="none" stroke="var(--text-primary)" strokeWidth="4"
+            <circle cx="90" cy="90" r="80" fill="none" stroke={isFinished ? '#5aaa6f' : 'var(--text-primary)'} strokeWidth="4"
               strokeDasharray={`${2 * Math.PI * 80}`}
               strokeDashoffset={`${2 * Math.PI * 80 * (1 - progress)}`}
-              style={{ transition: 'stroke-dashoffset 1s linear' }}
+              style={{ transition: 'stroke-dashoffset 0.3s ease-out' }}
             />
           </svg>
           <div style={{
@@ -230,7 +256,7 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
         ) : (
           <div style={{ animation: 'grow 0.6s ease-out' }}>
             <p style={{ fontSize: '18px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '16px', color: '#5aaa6f' }}>
-              СЕССИЯ ЗАВЕРШЕНА!
+              🎉 СЕССИЯ ЗАВЕРШЕНА!
             </p>
             <p style={{ fontSize: '14px', color: 'var(--text-soft)', marginBottom: '16px' }}>
               Фокус-сессия по задаче «{task.title}» завершена.
@@ -238,7 +264,7 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button className="btn-ghost" onClick={handleClose}>ЗАБРАТЬ XP</button>
-              <button className="btn-ghost btn-ghost-sm" onClick={() => { resetTimer(); startTimer(); }}>
+              <button className="btn-ghost btn-ghost-sm" onClick={startNewSession}>
                 ЕЩЁ СЕССИЯ
               </button>
             </div>

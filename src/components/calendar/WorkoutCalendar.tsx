@@ -6,8 +6,21 @@ interface Props {
   workouts: Workout[];
 }
 
-const MONTH_NAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
-const CALENDAR_LEVELS = ['var(--level-0-cell)', '#1e293b', '#1d4ed8', '#2563eb', '#60a5fa'];
+interface CalendarDayCell {
+  day: number;
+  date: string;
+  count: number;
+  level: number;
+}
+
+interface MonthGridData {
+  name: string;
+  month: number;
+  cells: CalendarDayCell[];
+}
+
+const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 function getCalendarLevel(count: number): number {
   if (count >= 5) return 4;
@@ -17,43 +30,70 @@ function getCalendarLevel(count: number): number {
   return 0;
 }
 
-interface CalendarDayCell {
-  day: number;
-  date: string;
-  count: number;
-  level: number;
+function getWorkoutStyle(level: number, isSelected: boolean) {
+  if (isSelected) {
+    return {
+      background: '#4f46e5',
+      color: '#ffffff',
+      fontWeight: 700,
+      border: '2px solid #ffffff',
+      boxShadow: '0 0 10px rgba(79, 70, 229, 0.4)',
+    };
+  }
+
+  switch (level) {
+    case 4:
+      return { background: 'rgba(70, 130, 215, 0.9)', color: '#ffffff', fontWeight: 700, border: '1px solid rgba(199, 210, 254, 0.25)' };
+    case 3:
+      return { background: 'rgba(55, 110, 190, 0.75)', color: '#e0e7ff', fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)' };
+    case 2:
+      return { background: 'rgba(45, 90, 160, 0.6)', color: '#c7d2fe', fontWeight: 600, border: '1px solid transparent' };
+    case 1:
+      return { background: 'rgba(38, 72, 125, 0.45)', color: '#a5b4fc', fontWeight: 500, border: '1px solid transparent' };
+    default:
+      return { background: 'rgba(255, 255, 255, 0.03)', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 400, border: '1px solid transparent' };
+  }
 }
 
-function buildCalendarYearGrid(year: number, dayMap: Record<string, number>) {
+function build7ColumnCalendarYearGrid(year: number, dayMap: Record<string, number>): MonthGridData[] {
   return Array.from({ length: 12 }, (_, month) => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    // Monday = 0, Sunday = 6
+    const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
     const cells: CalendarDayCell[] = [];
+
+    // Empty offset cells before day 1
+    for (let i = 0; i < firstDayIndex; i++) {
+      cells.push({ day: 0, date: '', count: 0, level: -1 });
+    }
+
+    // Actual days of month
     for (let day = 1; day <= daysInMonth; day++) {
       const pad = (n: number) => String(n).padStart(2, '0');
       const dateStr = `${year}-${pad(month + 1)}-${pad(day)}`;
       const count = dayMap[dateStr] || 0;
       cells.push({ day, date: dateStr, count, level: getCalendarLevel(count) });
     }
-    const rows: CalendarDayCell[][] = [];
-    for (let i = 0; i < cells.length; i += 4) rows.push(cells.slice(i, i + 4));
-    const lastRow = rows[rows.length - 1];
-    while (lastRow.length < 4) lastRow.push({ day: 0, date: '', count: 0, level: -1 });
-    return { name: MONTH_NAMES[month], month, rows };
+
+    // Always pad to 42 cells (6 rows * 7 columns) for uniform card height
+    while (cells.length < 42) {
+      cells.push({ day: 0, date: '', count: 0, level: -1 });
+    }
+
+    return { name: MONTH_NAMES[month], month, cells };
   });
 }
 
 export default function WorkoutCalendar({ workouts }: Props) {
   const [calendarViewYear, setCalendarViewYear] = useState(new Date().getFullYear());
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
-  const cellSize = 26;
-  const cellGap = 2;
 
   const calendarMonths = useMemo(() => {
     const dayMap: Record<string, number> = {};
     workouts.filter(w => w.completed).forEach(w => {
       dayMap[w.date] = (dayMap[w.date] || 0) + 1;
     });
-    return buildCalendarYearGrid(calendarViewYear, dayMap);
+    return build7ColumnCalendarYearGrid(calendarViewYear, dayMap);
   }, [workouts, calendarViewYear]);
 
   const selectedDateWorkouts = useMemo(() => {
@@ -64,7 +104,7 @@ export default function WorkoutCalendar({ workouts }: Props) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h3 className="micro-cap" style={{ margin: 0 }}>КАЛЕНДАРЬ ТРЕНИРОВОК ({calendarViewYear})</h3>
+        <h3 className="micro-cap" style={{ margin: 0 }}>🏋️ КАЛЕНДАРЬ ТРЕНИРОВОК ({calendarViewYear})</h3>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className="btn-ghost btn-ghost-xs" onClick={() => setCalendarViewYear(y => y - 1)}>◀ {calendarViewYear - 1}</button>
           <button className="btn-ghost btn-ghost-xs" onClick={() => setCalendarViewYear(new Date().getFullYear())}>ТЕКУЩИЙ ГОД</button>
@@ -72,39 +112,54 @@ export default function WorkoutCalendar({ workouts }: Props) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         {calendarMonths.map(m => (
-          <div key={m.month} className="card-panel" style={{ padding: '16px' }}>
-            <div className="micro-cap" style={{ marginBottom: '12px', fontSize: '11px' }}>{m.name}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: `${cellGap}px` }}>
-              {m.rows.map((row, ri) => (
-                <div key={ri} style={{ display: 'flex', gap: `${cellGap}px` }}>
-                  {row.map((cell, ci) => {
-                    if (cell.level === -1) {
-                      return <div key={ci} style={{ width: `${cellSize}px`, height: `${cellSize}px` }} />;
-                    }
-                    const isSelected = selectedCalendarDate === cell.date;
-                    return (
-                      <div
-                        key={ci}
-                        title={cell.count > 0 ? `${cell.date}: ${cell.count} трен.` : cell.date}
-                        onClick={() => setSelectedCalendarDate(cell.date)}
-                        style={{
-                          width: `${cellSize}px`, height: `${cellSize}px`,
-                          borderRadius: '4px',
-                          background: isSelected ? '#60a5fa' : CALENDAR_LEVELS[cell.level],
-                          color: isSelected ? '#000000' : cell.level > 0 ? '#ffffff' : 'var(--text-soft)',
-                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '10px', fontWeight: cell.count > 0 || isSelected ? 700 : 400,
-                          transition: 'all 0.15s ease', border: isSelected ? '2px solid #ffffff' : 'none'
-                        }}
-                      >
-                        {cell.day}
-                      </div>
-                    );
-                  })}
+          <div key={m.month} className="card-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--text-primary)', marginBottom: '12px', textTransform: 'uppercase' }}>
+              {m.name}
+            </div>
+
+            {/* Weekdays Header */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px', textAlign: 'center' }}>
+              {WEEKDAYS.map((wd, i) => (
+                <div key={wd} style={{ fontSize: '10px', color: i >= 5 ? '#ff9f43' : 'var(--text-muted)', fontWeight: 600 }}>
+                  {wd}
                 </div>
               ))}
+            </div>
+
+            {/* 7-Column Days Grid (6 uniform rows) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+              {m.cells.map((cell, ci) => {
+                if (cell.level === -1) {
+                  return <div key={ci} style={{ height: '30px', width: '100%' }} />;
+                }
+                const isSelected = selectedCalendarDate === cell.date;
+                const cellStyle = getWorkoutStyle(cell.level, isSelected);
+
+                return (
+                  <div
+                    key={ci}
+                    title={cell.count > 0 ? `${cell.date}: ${cell.count} трен.` : cell.date}
+                    onClick={() => setSelectedCalendarDate(cell.date)}
+                    style={{
+                      height: '30px',
+                      width: '100%',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      transition: 'all 0.15s ease',
+                      boxSizing: 'border-box',
+                      ...cellStyle,
+                    }}
+                  >
+                    {cell.day}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
