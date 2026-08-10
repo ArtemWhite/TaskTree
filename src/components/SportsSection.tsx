@@ -128,8 +128,9 @@ export default function SportsSection({ workouts, onAdd, onUpdate, onDelete, onC
 
   // Sort & filter
   const [sortBy, setSortBy] = useState<SortMode>('date');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [deletedBuiltIn, setDeletedBuiltIn] = useState<Set<string>>(loadDeletedTypes);
+  const [selectedTypeForModal, setSelectedTypeForModal] = useState<string | null>(null);
 
   // Custom workout form ("Своё...")
   const [formCustomIcon, setFormCustomIcon] = useState('⭐');
@@ -401,9 +402,9 @@ export default function SportsSection({ workouts, onAdd, onUpdate, onDelete, onC
                       <span style={{ fontSize: '24px' }}>{type.icon}</span>
                       <span style={{ display: 'inline-block', width: '14px', height: '14px', borderRadius: '4px', background: type.color, border: '1px solid var(--hairline)', flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: '14px' }}>{type.name}</span>
-                      <span className="badge" style={{ borderColor: type.color, color: type.color }}>
+                      <button type="button" className="badge" style={{ borderColor: type.color, color: type.color, cursor: 'pointer', background: 'transparent' }} onClick={() => setSelectedTypeForModal(type.name)}>
                         {typeWorkouts.length} тренировок
-                      </span>
+                      </button>
                       <button type="button" className="btn-ghost btn-ghost-xs" onClick={() => startRenameType(type)} title="Редактировать">✎</button>
                       <button type="button" className="btn-ghost btn-ghost-xs" onClick={() => handleDeleteType(type.name)}
                         style={{ color: '#ff6b6b', borderColor: '#ff6b6b' }} title="Удалить">✕</button>
@@ -494,7 +495,9 @@ export default function SportsSection({ workouts, onAdd, onUpdate, onDelete, onC
                   <span style={{ fontSize: '16px' }}>{type.icon}</span>
                   <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', background: type.color, border: '1px solid var(--hairline)' }} />
                   <span style={{ flex: 1, fontSize: '14px', color: 'var(--text-primary)' }}>{type.name}</span>
-                  <span className="badge" style={{ fontSize: '10px' }}>{workouts.filter(w => w.workoutType === type.name).length} тренировок</span>
+                  <button type="button" className="badge" style={{ fontSize: '10px', cursor: 'pointer', background: 'transparent' }} onClick={(e) => { e.stopPropagation(); setSelectedTypeForModal(type.name); }}>
+                    {workouts.filter(w => w.workoutType === type.name).length} тренировок
+                  </button>
                 </div>
               ))}
             </div>
@@ -657,6 +660,35 @@ export default function SportsSection({ workouts, onAdd, onUpdate, onDelete, onC
         ))
       )}
       </>
+      )}
+
+      {/* Modal for workout types */}
+      {selectedTypeForModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }} onClick={() => setSelectedTypeForModal(null)}>
+          <div className="card-panel" style={{ width: '100%', maxWidth: '400px', maxHeight: '80vh', overflowY: 'auto', padding: '24px', position: 'relative' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px' }}>Тренировки: {selectedTypeForModal}</h3>
+              <button type="button" className="btn-ghost btn-ghost-xs" onClick={() => setSelectedTypeForModal(null)}>✕</button>
+            </div>
+            {workouts.filter(w => w.workoutType === selectedTypeForModal).length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>Нет тренировок этого типа.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {workouts.filter(w => w.workoutType === selectedTypeForModal).map(w => (
+                  <div key={w.id} style={{ padding: '8px 12px', background: 'var(--surface-hover)', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 700 }}>{w.title}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{new Date(w.date + 'T12:00:00').toLocaleDateString('ru')}</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-soft)' }}>
+                      ⏱ {w.duration} мин | ⚡ +{w.xp} XP | {w.completed ? '✅ Завершено' : '⏳ В ожидании'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
