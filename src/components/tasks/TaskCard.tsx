@@ -36,6 +36,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <div
+      id={`task-card-${task.id}`}
       className="card-panel"
       style={{
         padding: '16px 20px',
@@ -82,6 +83,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             <span>⚡ +{task.xp} XP</span>
             {task.deadline && (
               <span>⏳ {new Date(task.deadline).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+            )}
+            {task.completed && (task.completedDate || task.createdAt) && (
+              <span style={{ color: '#5aaa6f', fontWeight: 600 }}>
+                ✅ {new Date(task.completedDate || task.createdAt).toLocaleString('ru', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
             )}
             {task.pomodoroCount > 0 && <span>🍅 ×{task.pomodoroCount}</span>}
           </div>

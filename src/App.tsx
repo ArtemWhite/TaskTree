@@ -54,9 +54,15 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('tasks');
   const [pomodoroTask, setPomodoroTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(StorageService.getTheme);
   const [pomodoroCompleteToast, setPomodoroCompleteToast] = useState<{ taskId: string; taskTitle: string; xp: number } | null>(null);
   const [calendarView, setCalendarView] = useState<'heatmap' | 'tasks' | 'workouts'>('heatmap');
+
+  const handleNavigateToTask = (taskId: string) => {
+    setActiveTab('tasks');
+    setHighlightTaskId(taskId);
+  };
 
   useEffect(() => {
     StorageService.setTheme(theme);
@@ -97,6 +103,7 @@ export default function App() {
               onStartPomodoro={setPomodoroTask}
               editingTask={editingTask}
               setEditingTask={setEditingTask}
+              highlightTaskId={highlightTaskId}
             />
           )}
           {activeTab === 'sports' && (
@@ -141,7 +148,12 @@ export default function App() {
                 <button className={`tab-btn ${calendarView === 'tasks' ? 'active' : ''}`} onClick={() => setCalendarView('tasks')}>📋 ЗАДАЧИ</button>
                 <button className={`tab-btn ${calendarView === 'workouts' ? 'active' : ''}`} onClick={() => setCalendarView('workouts')}>🏋️ ТРЕНИРОВКИ</button>
               </div>
-              {calendarView === 'heatmap' && <CalendarHeatmap completedDays={completedDays} />}
+              {calendarView === 'heatmap' && (
+                <CalendarHeatmap
+                  completedDays={completedDays}
+                  onNavigateToTask={handleNavigateToTask}
+                />
+              )}
               {calendarView === 'tasks' && (
                 <TaskCalendar
                   tasks={activeTasks}

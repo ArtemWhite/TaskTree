@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Task, Category, Difficulty } from '../types';
 import { TaskService } from '../services/TaskService';
 import { TaskCard } from './tasks/TaskCard';
@@ -18,6 +18,7 @@ interface Props {
   onStartPomodoro: (t: Task) => void;
   editingTask: Task | null;
   setEditingTask: (t: Task | null) => void;
+  highlightTaskId?: string | null;
 }
 
 const DIFFICULTY_XP: Record<Difficulty, number> = { easy: 20, medium: 50, hard: 100 };
@@ -25,7 +26,8 @@ const EMOJI_LIST = ['🧠','🏋️','📚','💻','🎨','🎵','🍳','🏃','
 
 export default function TaskSection({
   tasks, completedTasks, categories, onAdd, onUpdate, onDelete, onComplete, onUncomplete,
-  onAddCategory, onUpdateCategory, onDeleteCategory, onStartPomodoro, editingTask, setEditingTask
+  onAddCategory, onUpdateCategory, onDeleteCategory, onStartPomodoro, editingTask, setEditingTask,
+  highlightTaskId
 }: Props) {
   const [subtab, setSubtab] = useState<'active' | 'completed' | 'categories'>('active');
   const [showForm, setShowForm] = useState(false);
@@ -50,9 +52,23 @@ export default function TaskSection({
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'createdAt' | 'deadline' | 'title' | 'createdAt+deadline' | 'priority'>('createdAt');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'completedDate' | 'deadline' | 'title' | 'createdAt+deadline' | 'priority'>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [groupByDate, setGroupByDate] = useState(false);
+  const [groupByDate, setGroupByDate] = useState(true);
+
+  useEffect(() => {
+    if (highlightTaskId) {
+      setSubtab('completed');
+      setTimeout(() => {
+        const el = document.getElementById(`task-card-${highlightTaskId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('highlight-pulse');
+          setTimeout(() => el.classList.remove('highlight-pulse'), 2500);
+        }
+      }, 100);
+    }
+  }, [highlightTaskId]);
 
   const filteredTasks = useMemo(() => {
     let list = subtab === 'active' ? tasks : completedTasks;
@@ -62,6 +78,11 @@ export default function TaskSection({
     const dir = sortDir === 'asc' ? 1 : -1;
     return [...list].sort((a, b) => {
       if (sortBy === 'title') return dir * a.title.localeCompare(b.title, 'ru');
+      if (sortBy === 'completedDate') {
+        const dA = a.completedDate || a.createdAt;
+        const dB = b.completedDate || b.createdAt;
+        return dir * dA.localeCompare(dB);
+      }
       if (sortBy === 'deadline') {
         if (!a.deadline && !b.deadline) return 0;
         if (!a.deadline) return 1;
@@ -238,6 +259,7 @@ export default function TaskSection({
 
               <select className="input-spacex" style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }} value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
                 <option value="createdAt">По дате создания</option>
+                <option value="completedDate">По дате выполнения</option>
                 <option value="priority">По приоритету</option>
                 <option value="deadline">По дедлайну</option>
                 <option value="title">По алфавиту</option>
@@ -301,7 +323,12 @@ export default function TaskSection({
               <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Добавьте новую задачу выше</p>
             </div>
           ) : groupByDate && groupedTasks ? (
-            Object.entries(groupedTasks).map(([date, group]) => (
+            Object.entries(groupedTasks)
+              .sort(([dateA], [dateB]) => {
+                const dir = sortDir === 'asc' ? 1 : -1;
+                return dir * dateA.localeCompare(dateB);
+              })
+              .map(([date, group]) => (
               <div key={date} style={{ marginBottom: '24px' }}>
                 <h4 className="micro-cap" style={{ marginBottom: '12px', borderBottom: '1px solid var(--hairline)', paddingBottom: '4px' }}>
                   📅 {new Date(date + 'T12:00:00').toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })}

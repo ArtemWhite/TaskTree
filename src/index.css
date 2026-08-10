@@ -124,6 +124,26 @@ body {
 .btn-ghost-sm { padding: 8px 18px; font-size: 11px; letter-spacing: 0.96px; }
 .btn-ghost-xs { padding: 4px 12px; font-size: 10px; letter-spacing: 0.8px; }
 
+/* Global Universal Button Active Press & Highlight Feedback */
+button,
+.btn-ghost,
+.tab-btn,
+.theme-toggle-btn,
+.emoji-option {
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+}
+
+button:active:not(:disabled),
+.btn-ghost:active:not(:disabled),
+.tab-btn:active:not(:disabled),
+.theme-toggle-btn:active:not(:disabled),
+.emoji-option:active:not(:disabled) {
+  transform: scale(0.95) !important;
+  background-color: var(--ghost-hover) !important;
+  box-shadow: 0 0 0 2px var(--ghost-hover), 0 0 10px rgba(255, 255, 255, 0.15) !important;
+  filter: brightness(1.15) !important;
+}
+
 .input-spacex {
   background: var(--input-bg);
   color: var(--text-primary);
@@ -409,6 +429,17 @@ input[type="time"] {
   font-size: 14px;
   letter-spacing: 0.8px;
   pointer-events: none;
+}
+
+/* Navigation task target highlight pulse animation */
+@keyframes highlightPulse {
+  0% { box-shadow: 0 0 0 0 rgba(90, 170, 111, 0.8), 0 0 20px rgba(90, 170, 111, 0.5); border-color: #5aaa6f; }
+  50% { box-shadow: 0 0 0 8px rgba(90, 170, 111, 0.4), 0 0 30px rgba(90, 170, 111, 0.7); border-color: #5aaa6f; }
+  100% { box-shadow: none; }
+}
+
+.highlight-pulse {
+  animation: highlightPulse 2.5s ease-out forwards;
 }
 
 /* Theme toggle button in nav */

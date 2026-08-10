@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react';
 import type { CompletedDay } from '../../types';
 import { CalendarService, type BaseCalendarCell } from '../../services/CalendarService';
 
-interface Props { completedDays: CompletedDay[]; }
+interface Props {
+  completedDays: CompletedDay[];
+  onNavigateToTask?: (taskId: string) => void;
+}
 
 interface DayCell extends BaseCalendarCell { day: number; date: string; count: number; level: number; }
 
@@ -31,49 +34,60 @@ function getHeatmapStyle(level: number, isSelected: boolean) {
   }
 }
 
-export default function CalendarHeatmap({ completedDays }: Props) {
+export default function CalendarHeatmap({ completedDays, onNavigateToTask }: Props) {
+  const [year, setYear] = useState(new Date().getFullYear());
   const [selectedDay, setSelectedDay] = useState<CompletedDay | null>(null);
-  const [viewYear, setViewYear] = useState(new Date().getFullYear());
 
   const months = useMemo(() => {
-    const dayMap: Record<string, CompletedDay> = {};
-    completedDays.forEach(cd => { dayMap[cd.date] = cd; });
+    const activityMap: Record<string, { count: number }> = {};
+    completedDays.forEach(d => {
+      activityMap[d.date] = { count: d.count };
+    });
 
     return CalendarService.buildYearGrid<DayCell>(
-      viewYear,
+      year,
       (day, dateStr) => {
-        const cd = dayMap[dateStr];
-        const count = cd ? cd.count : 0;
+        const info = activityMap[dateStr];
+        const count = info ? info.count : 0;
         return { day, date: dateStr, count, level: CalendarService.getLevel(count) };
       },
       () => ({ day: 0, date: '', count: 0, level: -1 })
     );
-  }, [completedDays, viewYear]);
+  }, [year, completedDays]);
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-        <h3 className="micro-cap" style={{ margin: 0 }}>🔥 ИСТОРИЯ ВЫПОЛНЕНИЯ ЗАДАЧ ({viewYear})</h3>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button className="btn-ghost btn-ghost-xs" onClick={() => setViewYear(y => y - 1)}>◀ {viewYear - 1}</button>
-          <button className="btn-ghost btn-ghost-xs" onClick={() => setViewYear(new Date().getFullYear())}>ТЕКУЩИЙ ГОД</button>
-          <button className="btn-ghost btn-ghost-xs" onClick={() => setViewYear(y => y + 1)}>{viewYear + 1} ▶</button>
+    <div className="card-panel">
+      {/* Year switcher */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h3 className="micro-cap" style={{ margin: 0, fontSize: '14px' }}>🔥 ИСТОРИЯ ВЫПОЛНЕНИЯ ЗАДАЧ ({year})</h3>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn-ghost btn-ghost-xs" onClick={() => setYear(y => y - 1)}>◀ {year - 1}</button>
+          <button className="btn-ghost btn-ghost-xs" style={{ background: 'var(--ghost-hover)' }} onClick={() => setYear(new Date().getFullYear())}>ТЕКУЩИЙ ГОД</button>
+          <button className="btn-ghost btn-ghost-xs" onClick={() => setYear(y => y + 1)}>{year + 1} ▶</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '11px', color: 'var(--text-muted)' }}>
+        <span>Меньше</span>
+        {[0, 1, 2, 3, 4].map(lvl => (
+          <div key={lvl} style={{ width: '14px', height: '14px', borderRadius: '3px', ...getHeatmapStyle(lvl, false) }} />
+        ))}
+        <span>Больше задач</span>
+      </div>
+
+      {/* Months Grid (3 columns on desktop) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
         {months.map(m => (
-          <div key={m.month} className="card-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.8px', color: 'var(--text-primary)', marginBottom: '12px', textTransform: 'uppercase' }}>
+          <div key={m.month} style={{ background: 'var(--surface-hover)', borderRadius: '8px', padding: '12px', border: '1px solid var(--hairline)' }}>
+            <div style={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-soft)', marginBottom: '8px', letterSpacing: '0.8px' }}>
               {m.name}
             </div>
 
-            {/* Weekdays Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px', textAlign: 'center' }}>
-              {CalendarService.WEEKDAYS.map((wd, i) => (
-                <div key={wd} style={{ fontSize: '10px', color: i >= 5 ? '#ff9f43' : 'var(--text-muted)', fontWeight: 600 }}>
-                  {wd}
-                </div>
+            {/* Weekday headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '4px', textAlign: 'center' }}>
+              {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d => (
+                <span key={d} style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>{d}</span>
               ))}
             </div>
 
@@ -134,9 +148,36 @@ export default function CalendarHeatmap({ completedDays }: Props) {
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
                   {selectedDay.tasks.map(t => (
-                    <div key={t.id} style={{ padding: '8px 12px', background: 'var(--surface-hover)', borderRadius: '6px', fontSize: '13px' }}>
-                      <div style={{ fontWeight: 600 }}>{t.title}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-soft)', marginTop: '2px' }}>⚡ +{t.xp} XP</div>
+                    <div
+                      key={t.id}
+                      style={{
+                        padding: '10px 12px',
+                        background: 'var(--surface-hover)',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t.title}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-soft)', marginTop: '2px' }}>⚡ +{t.xp} XP</div>
+                      </div>
+                      {onNavigateToTask && (
+                        <button
+                          className="btn-ghost btn-ghost-xs"
+                          style={{ color: '#5aaa6f', borderColor: '#5aaa6f', whiteSpace: 'nowrap' }}
+                          onClick={() => {
+                            onNavigateToTask(t.id);
+                            setSelectedDay(null);
+                          }}
+                          title="Перейти к этой задаче в списке"
+                        >
+                          🔗 ПЕРЕЙТИ
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

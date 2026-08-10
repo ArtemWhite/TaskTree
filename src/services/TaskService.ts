@@ -22,8 +22,7 @@ export class TaskService {
 
   public static groupTasksByDate(tasks: Task[]): Record<string, Task[]> {
     const groups: Record<string, Task[]> = {};
-    const sorted = TaskService.sortTasksByPriorityAndDate(tasks);
-    sorted.forEach(t => {
+    tasks.forEach(t => {
       const dateKey = (t.completedDate || t.createdAt).slice(0, 10);
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(t);
