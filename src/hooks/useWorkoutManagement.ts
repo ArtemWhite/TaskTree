@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Workout, WorkoutTypeDef } from '../types';
 import { WorkoutService } from '../services/WorkoutService';
 import { StorageService } from '../services/StorageService';
@@ -20,7 +20,13 @@ function saveDeletedTypes(set: Set<string>) {
   localStorage.setItem(DELETED_TYPES_KEY, JSON.stringify([...set]));
 }
 
-const INITIAL_FORM: WorkoutFormData = { title: '', workoutType: 'Силовая', date: '', duration: 60, notes: '' };
+const getInitialForm = (defaultType: string): WorkoutFormData => ({
+  title: '',
+  workoutType: defaultType,
+  date: '',
+  duration: 60,
+  notes: '',
+});
 
 interface UseWorkoutManagementOptions {
   workouts: Workout[];
@@ -36,17 +42,8 @@ export function useWorkoutManagement({
   onRenameWorkoutType,
 }: UseWorkoutManagementOptions) {
   const today = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState<WorkoutFormData>(INITIAL_FORM);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
-  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
-  const [customType, setCustomType] = useState('');
-  const [savedCustomTypes, setSavedCustomTypes] = useState<WorkoutTypeDef[]>(StorageService.loadCustomWorkoutTypes);
-  const [subtab, setSubtab] = useState<'workouts' | 'categories'>('workouts');
-  const [sortBy, setSortBy] = useState<SortMode>('date');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [deletedBuiltIn, setDeletedBuiltIn] = useState<Set<string>>(loadDeletedTypes);
-  const [selectedTypeForModal, setSelectedTypeForModal] = useState<string | null>(null);
+  const [savedCustomTypes, setSavedCustomTypes] = useState<WorkoutTypeDef[]>(StorageService.loadCustomWorkoutTypes);
 
   const visibleBuiltInTypes = useMemo(
     () => WorkoutService.BUILT_IN_WORKOUT_TYPES.filter(wt => !deletedBuiltIn.has(wt.name)),
@@ -62,6 +59,23 @@ export function useWorkoutManagement({
     () => savedCustomTypes.filter(t => !visibleBuiltInTypes.some(wt => wt.name === t.name)),
     [savedCustomTypes, visibleBuiltInTypes]
   );
+
+  const defaultType = allWorkoutTypes[0]?.name || 'custom';
+  const [form, setForm] = useState<WorkoutFormData>(() => getInitialForm(defaultType));
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [customType, setCustomType] = useState('');
+  const [subtab, setSubtab] = useState<'workouts' | 'categories'>('workouts');
+  const [sortBy, setSortBy] = useState<SortMode>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [selectedTypeForModal, setSelectedTypeForModal] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (form.workoutType !== 'custom' && !allWorkoutTypes.some(t => t.name === form.workoutType)) {
+      setForm(f => ({ ...f, workoutType: allWorkoutTypes[0]?.name || 'custom' }));
+    }
+  }, [allWorkoutTypes, form.workoutType]);
 
   const stats = useMemo(() => WorkoutService.calculateWorkoutStats(workouts), [workouts]);
 
@@ -96,6 +110,13 @@ export function useWorkoutManagement({
     return Object.entries(map).sort(([dA], [dB]) => (sortDir === 'asc' ? dA.localeCompare(dB) : dB.localeCompare(dA)));
   }, [sortedWorkouts, sortBy, sortDir]);
 
+  const resetForm = () => {
+    const fallbackType = allWorkoutTypes[0]?.name || 'custom';
+    setForm(getInitialForm(fallbackType));
+    setCustomType('');
+    setEditingId(null);
+  };
+
   const handleSubmit = (e: React.FormEvent, customIcon: string, customColor: string) => {
     e.preventDefault();
     let finalType = form.workoutType;
@@ -125,7 +146,6 @@ export function useWorkoutManagement({
         notes: form.notes,
         xp: calculatedXP,
       });
-      setEditingId(null);
     } else {
       onAdd({
         title: form.title || finalType,
@@ -138,8 +158,7 @@ export function useWorkoutManagement({
       });
     }
 
-    setForm(INITIAL_FORM);
-    setCustomType('');
+    resetForm();
   };
 
   const startEdit = (w: Workout) => {
@@ -156,9 +175,7 @@ export function useWorkoutManagement({
   };
 
   const cancelEdit = () => {
-    setEditingId(null);
-    setForm(INITIAL_FORM);
-    setCustomType('');
+    resetForm();
   };
 
   const toggleNotes = (id: string) => {

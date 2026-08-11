@@ -23,13 +23,15 @@ export class WorkoutService {
   }
 
   public static getTypeIcon(typeName: string, customDefs?: WorkoutTypeDef[]): string {
-    const found = WorkoutService.getAllWorkoutTypes(customDefs).find(t => t.name === typeName);
-    return found ? found.icon : '🏋️';
+    const list = customDefs || WorkoutService.getAllWorkoutTypes();
+    const found = list.find(t => t.name === typeName);
+    return found ? found.icon : '⚡';
   }
 
   public static getTypeColor(typeName: string, customDefs?: WorkoutTypeDef[]): string {
-    const found = WorkoutService.getAllWorkoutTypes(customDefs).find(t => t.name === typeName);
-    return found ? found.color : '#ffffff';
+    const list = customDefs || WorkoutService.getAllWorkoutTypes();
+    const found = list.find(t => t.name === typeName);
+    return found ? found.color : '#3b82c4';
   }
 
   public static calculateWorkoutStats(workouts: Workout[]): WorkoutStats {
