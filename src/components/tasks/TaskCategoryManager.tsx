@@ -55,9 +55,20 @@ export const TaskCategoryManager: React.FC<Props> = ({
           <div style={{ position: 'relative' }}>
             <button
               type="button"
-              className="btn-ghost"
+              className="input-spacex"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              style={{ fontSize: '20px' }}
+              style={{
+                width: '40px',
+                height: '40px',
+                padding: 0,
+                fontSize: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+              title="Выбрать эмодзи"
             >
               {catEmoji}
             </button>
@@ -67,31 +78,49 @@ export const TaskCategoryManager: React.FC<Props> = ({
                   position: 'absolute',
                   top: '100%',
                   left: 0,
-                  zIndex: 10,
+                  zIndex: 50,
                   background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-soft)',
-                  borderRadius: '12px',
-                  padding: '12px',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(8, 1fr)',
-                  gap: '8px',
-                  maxWidth: '280px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--hairline)',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  marginTop: '4px',
+                  width: '280px',
+                  boxShadow: '0 12px 36px rgba(0,0,0,0.95)',
                 }}
               >
-                {EMOJI_LIST.map(e => (
-                  <button
-                    key={e}
-                    type="button"
-                    className="btn-ghost btn-ghost-xs"
-                    onClick={() => {
-                      setCatEmoji(e);
-                      setShowEmojiPicker(false);
-                    }}
-                  >
-                    {e}
-                  </button>
-                ))}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(8, 1fr)',
+                    gap: '4px',
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                  }}
+                >
+                  {EMOJI_LIST.map(e => (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => {
+                        setCatEmoji(e);
+                        setShowEmojiPicker(false);
+                      }}
+                      style={{
+                        background: catEmoji === e ? 'var(--ghost-hover)' : 'transparent',
+                        border: catEmoji === e ? '1px solid var(--text-primary)' : '1px solid transparent',
+                        borderRadius: '4px',
+                        padding: '4px',
+                        cursor: 'pointer',
+                        fontSize: '18px',
+                        textAlign: 'center',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
