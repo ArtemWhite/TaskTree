@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { Task, AppSettings } from '../types';
 import { PomodoroEngine } from '../services/PomodoroEngine';
 
@@ -7,7 +8,7 @@ interface Props {
   settings: AppSettings;
   onClose: () => void;
   onUpdateSettings: (s: Partial<AppSettings>) => void;
-  onSessionFinished: (wasMinimized: boolean, xp: number) => void;
+  onSessionFinished: (wasMinimized: boolean, xp: number, durationMinutes: number) => void;
 }
 
 export default function PomodoroModal({ task, settings, onClose, onUpdateSettings, onSessionFinished }: Props) {
@@ -47,13 +48,13 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
         setEndTime(null);
         setPausedRemainingMs(0);
         PomodoroEngine.playCompletionAudio(task.title);
-        onSessionFinished(minimizedRef.current, settings.pomodoroBonusXP);
+        onSessionFinished(minimizedRef.current, settings.pomodoroBonusXP, settings.pomodoroWorkMinutes);
         if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       }
     }, 50);
 
     return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
-  }, [isRunning, endTime, settings.pomodoroBonusXP, task.title, onSessionFinished]);
+  }, [isRunning, endTime, settings.pomodoroBonusXP, settings.pomodoroWorkMinutes, task.title, onSessionFinished]);
 
   const isRunningRef = useRef(isRunning);
   useEffect(() => { isRunningRef.current = isRunning; }, [isRunning]);
@@ -148,7 +149,7 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
     );
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={() => { if (!isFinished) { setMinimized(true); } else { handleClose(); } }}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ textAlign: 'center', minWidth: '380px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -269,6 +270,7 @@ export default function PomodoroModal({ task, settings, onClose, onUpdateSetting
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

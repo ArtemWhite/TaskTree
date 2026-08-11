@@ -49,8 +49,8 @@ export function useAppData() {
   }, []);
 
   // Pomodoro
-  const completePomodoro = useCallback((taskId: string, xpEarned: number) => {
-    setData(d => AppDataManager.completePomodoro(d, taskId, xpEarned));
+  const completePomodoro = useCallback((taskId: string, xpEarned: number, duration: number) => {
+    setData(d => AppDataManager.completePomodoro(d, taskId, xpEarned, duration));
   }, []);
 
   // Workouts CRUD

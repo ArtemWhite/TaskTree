@@ -205,7 +205,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
         )}
       </div>
 
-      {popupData && <AnalyticsPopupModal popupData={popupData} onClose={closePopup} />}
+      {popupData && <AnalyticsPopupModal popupData={popupData} pomodoroHistory={pomodoroHistory} onClose={closePopup} />}
     </section>
   );
 }

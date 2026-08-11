@@ -68,7 +68,7 @@ export class AppDataManager {
   }
 
   // Pomodoro
-  public static completePomodoro(data: AppData, taskId: string, xpEarned: number): AppData {
+  public static completePomodoro(data: AppData, taskId: string, xpEarned: number, duration: number): AppData {
     const task = data.tasks.find(t => t.id === taskId);
     const taskTitle = task ? task.title : 'Задача';
     const newSession: PomodoroSession = {
@@ -76,7 +76,8 @@ export class AppDataManager {
       taskId,
       taskTitle,
       completedAt: new Date().toISOString(),
-      xpEarned
+      xpEarned,
+      duration
     };
     return {
       ...data,

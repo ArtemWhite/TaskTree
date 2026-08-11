@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Workout } from '../../types';
 import { WorkoutService } from '../../services/WorkoutService';
 import { CalendarService, type BaseCalendarCell } from '../../services/CalendarService';
@@ -141,7 +142,7 @@ export default function WorkoutCalendar({ workouts }: Props) {
       </div>
 
       {/* Day Workout Details Modal */}
-      {selectedDay && (
+      {selectedDay && createPortal(
         <div className="modal-overlay" onClick={() => setSelectedDay(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -180,7 +181,8 @@ export default function WorkoutCalendar({ workouts }: Props) {
               ЗАКРЫТЬ
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

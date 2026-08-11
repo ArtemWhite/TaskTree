@@ -92,6 +92,7 @@ export default function App() {
               tasks={activeTasks}
               completedTasks={completedTasks}
               categories={data.categories}
+              pomodoroHistory={data.pomodoroHistory}
               onAdd={addTask}
               onUpdate={updateTask}
               onDelete={deleteTask}
@@ -194,8 +195,8 @@ export default function App() {
           settings={data.settings}
           onClose={() => setPomodoroTask(null)}
           onUpdateSettings={updateSettings}
-          onSessionFinished={(_wasMinimized, xp) => {
-            completePomodoro(pomodoroTask.id, xp);
+          onSessionFinished={(_wasMinimized, xp, duration) => {
+            completePomodoro(pomodoroTask.id, xp, duration);
             setPomodoroCompleteToast({ taskId: pomodoroTask.id, taskTitle: pomodoroTask.title, xp });
             setPomodoroTask(null);
           }}

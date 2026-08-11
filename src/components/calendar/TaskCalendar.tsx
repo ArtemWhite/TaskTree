@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Task, Category } from '../../types';
 import { CalendarService, type BaseCalendarCell } from '../../services/CalendarService';
 
@@ -163,7 +164,7 @@ export default function TaskCalendar({ tasks, categories, onComplete, onDelete, 
       </div>
 
       {/* Selected Day Tasks Modal */}
-      {selectedCalendarDate && (
+      {selectedCalendarDate && createPortal(
         <div className="modal-overlay" onClick={() => setSelectedCalendarDate(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -213,7 +214,8 @@ export default function TaskCalendar({ tasks, categories, onComplete, onDelete, 
               ЗАКРЫТЬ
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

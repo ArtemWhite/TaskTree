@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import type { PomodoroSession } from '../../types';
+import PomodoroHistoryModal from '../common/PomodoroHistoryModal';
 
 export interface PopupItem {
+  taskId?: string;
   title: string;
   date: string;
   xp: number;
@@ -18,19 +22,21 @@ export interface PopupData {
 
 interface AnalyticsPopupModalProps {
   popupData: PopupData;
+  pomodoroHistory?: PomodoroSession[];
   onClose: () => void;
 }
 
-export const AnalyticsPopupModal: React.FC<AnalyticsPopupModalProps> = ({ popupData, onClose }) => {
+export const AnalyticsPopupModal: React.FC<AnalyticsPopupModalProps> = ({ popupData, pomodoroHistory = [], onClose }) => {
   const [popupSort, setPopupSort] = useState<'date' | 'xp'>('date');
   const [popupSortDir, setPopupSortDir] = useState<'asc' | 'desc'>('desc');
+  const [selectedPomodoroItem, setSelectedPomodoroItem] = useState<PopupItem | null>(null);
 
   const sortedItems = [...popupData.items].sort((a, b) => {
     const dir = popupSortDir === 'asc' ? 1 : -1;
     return popupSort === 'date' ? dir * a.date.localeCompare(b.date) : dir * (a.xp - b.xp);
   });
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', outline: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -96,10 +102,27 @@ export const AnalyticsPopupModal: React.FC<AnalyticsPopupModalProps> = ({ popupD
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: '4px' }}>{item.title}</div>
-              <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-soft)', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-soft)', flexWrap: 'wrap', alignItems: 'center' }}>
                 <span>{new Date(item.date).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                 <span>+{item.xp} XP</span>
-                {item.pomodoro > 0 && <span>🍅 ×{item.pomodoro}</span>}
+                {item.pomodoro > 0 && (
+                  <span
+                    style={{
+                      cursor: 'pointer',
+                      color: '#ffb7c5',
+                      fontWeight: 600,
+                      background: 'rgba(255, 183, 197, 0.1)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(255, 183, 197, 0.2)',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onClick={() => setSelectedPomodoroItem(item)}
+                    title="Посмотреть историю помодоро"
+                  >
+                    🍅 ×{item.pomodoro}
+                  </span>
+                )}
                 {item.duration !== undefined && item.duration > 0 && <span>⏱ {item.duration} мин</span>}
               </div>
             </div>
@@ -109,7 +132,18 @@ export const AnalyticsPopupModal: React.FC<AnalyticsPopupModalProps> = ({ popupD
         <button className="btn-ghost btn-ghost-sm" style={{ marginTop: '20px', width: '100%', outline: 'none' }} onClick={onClose}>
           ЗАКРЫТЬ
         </button>
+
+        {selectedPomodoroItem && (
+          <PomodoroHistoryModal
+            title={selectedPomodoroItem.title}
+            sessions={pomodoroHistory.filter(p =>
+              selectedPomodoroItem.taskId ? p.taskId === selectedPomodoroItem.taskId : p.taskTitle === selectedPomodoroItem.title
+            )}
+            onClose={() => setSelectedPomodoroItem(null)}
+          />
+        )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

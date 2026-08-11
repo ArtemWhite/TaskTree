@@ -1,12 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { Task, Category, Difficulty } from '../types';
+import type { Task, Category, Difficulty, PomodoroSession } from '../types';
 import { TaskService } from '../services/TaskService';
 import { TaskCard } from './tasks/TaskCard';
+import PomodoroHistoryModal from './common/PomodoroHistoryModal';
 
 interface Props {
   tasks: Task[];
   completedTasks: Task[];
   categories: Category[];
+  pomodoroHistory: PomodoroSession[];
   onAdd: (t: Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'>) => void;
   onUpdate: (id: string, updates: Partial<Task>) => void;
   onDelete: (id: string) => void;
@@ -26,12 +28,13 @@ const DIFFICULTY_XP: Record<Difficulty, number> = { easy: 20, medium: 50, hard: 
 const EMOJI_LIST = ['🧠','🏋️','📚','💻','🎨','🎵','🍳','🏃','🧘','💼','📝','🎯','🌟','🔥','💡','🎮','📖','✍️','🎓','🏆','💪','🧹','🛒','📞','✈️','🚗','🏠','💰','🎁','🌈','🐾','🍕'];
 
 export default function TaskSection({
-  tasks, completedTasks, categories, onAdd, onUpdate, onDelete, onComplete, onUncomplete,
+  tasks, completedTasks, categories, pomodoroHistory, onAdd, onUpdate, onDelete, onComplete, onUncomplete,
   onAddCategory, onUpdateCategory, onDeleteCategory, onStartPomodoro, editingTask, setEditingTask,
   highlightTaskId, onClearHighlight
 }: Props) {
   const [subtab, setSubtab] = useState<'active' | 'completed' | 'categories'>('active');
   const [showForm, setShowForm] = useState(false);
+  const [selectedPomodoroTask, setSelectedPomodoroTask] = useState<Task | null>(null);
 
   // New task form state
   const [title, setTitle] = useState('');
@@ -160,6 +163,8 @@ export default function TaskSection({
     setCatColor('#ffffff');
   };
 
+  const [groupByField, setGroupByField] = useState<'createdAt' | 'deadline'>('createdAt');
+
   const categoryMap = useMemo(() => {
     const m: Record<string, Category> = {};
     categories.forEach(c => { m[c.id] = c; });
@@ -168,8 +173,8 @@ export default function TaskSection({
 
   const groupedTasks = useMemo(() => {
     if (!groupByDate) return null;
-    return TaskService.groupTasksByDate(filteredTasks);
-  }, [filteredTasks, groupByDate]);
+    return TaskService.groupTasksByDate(filteredTasks, groupByField);
+  }, [filteredTasks, groupByDate, groupByField]);
 
   return (
     <section>
@@ -311,6 +316,13 @@ export default function TaskSection({
               <button className={`btn-ghost btn-ghost-xs ${groupByDate ? 'active' : ''}`} style={{ background: groupByDate ? 'var(--ghost-hover)' : 'transparent' }} onClick={() => setGroupByDate(g => !g)}>
                 📅 ГРУППИРОВКА
               </button>
+
+              {groupByDate && (
+                <select className="input-spacex" style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }} value={groupByField} onChange={e => setGroupByField(e.target.value as any)}>
+                  <option value="createdAt">По дате создания</option>
+                  <option value="deadline">По дедлайну</option>
+                </select>
+              )}
             </div>
           </div>
 
@@ -364,13 +376,15 @@ export default function TaskSection({
           ) : groupByDate && groupedTasks ? (
             Object.entries(groupedTasks)
               .sort(([dateA], [dateB]) => {
+                if (dateA === 'Без дедлайна') return 1;
+                if (dateB === 'Без дедлайна') return -1;
                 const dir = sortDir === 'asc' ? 1 : -1;
                 return dir * dateA.localeCompare(dateB);
               })
               .map(([date, group]) => (
               <div key={date} style={{ marginBottom: '24px' }}>
                 <h4 className="micro-cap" style={{ marginBottom: '12px', borderBottom: '1px solid var(--hairline)', paddingBottom: '4px' }}>
-                  📅 {new Date(date + 'T12:00:00').toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  📅 {date === 'Без дедлайна' ? 'БЕЗ ДЕДЛАЙНА' : new Date(date + 'T12:00:00').toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {group.map(t => (
@@ -383,6 +397,7 @@ export default function TaskSection({
                       onEdit={startEdit}
                       onDelete={onDelete}
                       onStartPomodoro={onStartPomodoro}
+                      onShowPomodoroHistory={t => setSelectedPomodoroTask(t)}
                     />
                   ))}
                 </div>
@@ -400,11 +415,20 @@ export default function TaskSection({
                   onEdit={startEdit}
                   onDelete={onDelete}
                   onStartPomodoro={onStartPomodoro}
+                  onShowPomodoroHistory={t => setSelectedPomodoroTask(t)}
                 />
               ))}
             </div>
           )}
         </div>
+      )}
+
+      {selectedPomodoroTask && (
+        <PomodoroHistoryModal
+          title={selectedPomodoroTask.title}
+          sessions={pomodoroHistory.filter(p => p.taskId === selectedPomodoroTask.id)}
+          onClose={() => setSelectedPomodoroTask(null)}
+        />
       )}
     </section>
   );

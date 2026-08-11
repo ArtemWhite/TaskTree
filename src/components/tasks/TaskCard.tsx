@@ -9,6 +9,7 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onStartPomodoro: (task: Task) => void;
+  onShowPomodoroHistory?: (task: Task) => void;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -19,6 +20,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onEdit,
   onDelete,
   onStartPomodoro,
+  onShowPomodoroHistory,
 }) => {
   const getPriorityStyle = (p?: 'low' | 'medium' | 'high') => {
     if (p === 'high') return { label: 'ВЫСОКИЙ', color: '#ff6b6b', bg: 'rgba(255, 107, 107, 0.1)' };
@@ -81,15 +83,48 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             <span>{category?.emoji || '📝'} {category?.name || 'Без категории'}</span>
             <span>{getDifficultyLabel(task.difficulty)}</span>
             <span>⚡ +{task.xp} XP</span>
-            {task.deadline && (
-              <span>⏳ {new Date(task.deadline).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-            )}
+            {task.deadline && (() => {
+              const isOverdue = !task.completed && new Date(task.deadline).getTime() < Date.now();
+              return (
+                <span
+                  style={{
+                    color: isOverdue ? '#ff6b6b' : 'var(--text-soft)',
+                    fontWeight: isOverdue ? 700 : 400,
+                    background: isOverdue ? 'rgba(255, 107, 107, 0.12)' : 'transparent',
+                    padding: isOverdue ? '2px 6px' : '0',
+                    borderRadius: '4px',
+                    border: isOverdue ? '1px solid rgba(255, 107, 107, 0.3)' : 'none',
+                  }}
+                >
+                  {isOverdue ? '⚠️ ' : '⏳ '}
+                  {new Date(task.deadline).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  {isOverdue ? ' (Просрочено)' : ''}
+                </span>
+              );
+            })()}
             {task.completed && (task.completedDate || task.createdAt) && (
               <span style={{ color: '#5aaa6f', fontWeight: 600 }}>
                 ✅ {new Date(task.completedDate || task.createdAt).toLocaleString('ru', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
-            {task.pomodoroCount > 0 && <span>🍅 ×{task.pomodoroCount}</span>}
+            {task.pomodoroCount > 0 && (
+              <span
+                style={{
+                  cursor: 'pointer',
+                  color: '#ffb7c5',
+                  fontWeight: 600,
+                  background: 'rgba(255, 183, 197, 0.1)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(255, 183, 197, 0.2)',
+                  transition: 'all 0.15s ease',
+                }}
+                onClick={() => onShowPomodoroHistory?.(task)}
+                title="Нажмите, чтобы просмотреть историю помодоро"
+              >
+                🍅 ×{task.pomodoroCount}
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { CompletedDay } from '../../types';
 import { CalendarService, type BaseCalendarCell } from '../../services/CalendarService';
 
@@ -129,7 +130,7 @@ export default function CalendarHeatmap({ completedDays, onNavigateToTask }: Pro
         ))}
       </div>
 
-      {selectedDay && (
+      {selectedDay && createPortal(
         <div className="modal-overlay" onClick={() => setSelectedDay(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -187,7 +188,8 @@ export default function CalendarHeatmap({ completedDays, onNavigateToTask }: Pro
               ЗАКРЫТЬ
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

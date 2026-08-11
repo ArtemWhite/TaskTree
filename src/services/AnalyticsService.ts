@@ -71,6 +71,7 @@ export class AnalyticsService {
         map[t.categoryId].value++;
         map[t.categoryId].xp += t.xp;
         map[t.categoryId].tasks.push({
+          taskId: t.id,
           title: t.title,
           date: t.completedDate || t.createdAt,
           xp: t.xp,

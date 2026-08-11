@@ -29,4 +29,5 @@ export interface PomodoroSession {
   taskTitle: string;
   completedAt: string;
   xpEarned: number;
+  duration?: number;
 }
