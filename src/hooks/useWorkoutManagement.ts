@@ -134,7 +134,8 @@ export function useWorkoutManagement({
       }
     }
 
-    const calculatedXP = Math.round((form.duration / 30) * 10);
+    const durationMinutes = Math.max(1, form.duration || 1);
+    const calculatedXP = Math.round((durationMinutes / 30) * 10);
     const dateToUse = form.date || today;
 
     if (editingId) {
@@ -142,7 +143,7 @@ export function useWorkoutManagement({
         title: form.title || finalType,
         workoutType: finalType,
         date: dateToUse,
-        duration: form.duration,
+        duration: durationMinutes,
         notes: form.notes,
         xp: calculatedXP,
       });
@@ -151,7 +152,7 @@ export function useWorkoutManagement({
         title: form.title || finalType,
         workoutType: finalType,
         date: dateToUse,
-        duration: form.duration,
+        duration: durationMinutes,
         notes: form.notes,
         completed: false,
         xp: calculatedXP,

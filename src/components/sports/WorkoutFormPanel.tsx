@@ -119,24 +119,27 @@ export const WorkoutFormPanel: React.FC<Props> = ({
               className="input-spacex spin-input"
               type="number"
               placeholder="Мин."
-              min={5}
-              max={300}
-              step={5}
-              value={form.duration}
-              onChange={e => onChangeForm(f => ({ ...f, duration: Math.max(5, Number(e.target.value)) }))}
+              min={1}
+              max={1440}
+              step={1}
+              value={form.duration || ''}
+              onChange={e => {
+                const val = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                onChangeForm(f => ({ ...f, duration: val }));
+              }}
             />
             <div className="spin-btns">
               <button
                 type="button"
                 className="spin-btn"
-                onClick={() => onChangeForm(f => ({ ...f, duration: Math.min(300, f.duration + 5) }))}
+                onClick={() => onChangeForm(f => ({ ...f, duration: Math.min(1440, (f.duration || 0) + 1) }))}
               >
                 ▲
               </button>
               <button
                 type="button"
                 className="spin-btn"
-                onClick={() => onChangeForm(f => ({ ...f, duration: Math.max(5, f.duration - 5) }))}
+                onClick={() => onChangeForm(f => ({ ...f, duration: Math.max(1, (f.duration || 0) - 1) }))}
               >
                 ▼
               </button>
