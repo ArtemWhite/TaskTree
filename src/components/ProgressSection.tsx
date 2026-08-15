@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { TreeStage, PomodoroSession } from '../types';
-import { ProgressService } from '../services/ProgressService';
 import { useTreeInteractiveView } from '../hooks/useTreeInteractiveView';
 import { TreeViewportFrame } from './progress/TreeViewportFrame';
 import { StageHeaderControls } from './progress/StageHeaderControls';
@@ -25,8 +24,6 @@ interface Props {
   sideLayout?: boolean;
   treeSize?: number;
 }
-
-export const STAGE_NAMES = ProgressService.STAGE_NAMES;
 
 export default function ProgressSection({
   totalXP,

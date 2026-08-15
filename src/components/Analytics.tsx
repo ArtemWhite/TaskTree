@@ -5,7 +5,7 @@ import { AnalyticsService } from '../services/AnalyticsService';
 import { useAnimatedPieData } from '../hooks/useAnimatedPieData';
 import { AnalyticsCharts } from './analytics/AnalyticsCharts';
 import { AnalyticsPieSection } from './analytics/AnalyticsPieSection';
-import { AnalyticsPopupModal, type PopupData } from './analytics/AnalyticsPopupModal';
+import { AnalyticsPopupModal, type PopupData, type PopupItem } from './analytics/AnalyticsPopupModal';
 
 interface Props {
   tasks: Task[];
@@ -56,7 +56,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
   const barData = useMemo(() => ({ last7: dailyData.slice(-7), last30: dailyData }), [dailyData]);
 
   const workoutTypeData = useMemo(() => {
-    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string; tasks: any[] }> = {};
+    const map: Record<string, { name: string; value: number; xp: number; duration: number; color: string; icon: string; tasks: PopupItem[] }> = {};
     workouts.filter(w => w.completed).forEach(w => {
       if (!map[w.workoutType]) {
         map[w.workoutType] = {
@@ -142,7 +142,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
               data={categoryData}
               title="РАСПРЕДЕЛЕНИЕ ПО КАТЕГОРИЯМ"
               pieRef={catPieRef}
-              onSliceClick={d => setPopupData({ emoji: d.emoji, name: d.name, color: d.color, xp: d.xp, items: d.tasks })}
+              onSliceClick={d => setPopupData({ emoji: d.emoji ?? '', name: d.name, color: d.color, xp: d.xp, items: d.tasks })}
             />
           </>
         )}
@@ -199,7 +199,7 @@ export default function Analytics({ tasks, pomodoroHistory, categories, workouts
               pieRef={sportPieRef}
               sportPieMode={sportPieMode}
               onModeChange={setSportPieMode}
-              onSliceClick={d => setPopupData({ emoji: d.icon, name: d.name, color: d.color, xp: d.xp, items: d.tasks })}
+              onSliceClick={d => setPopupData({ emoji: d.icon ?? '', name: d.name, color: d.color, xp: d.xp, items: d.tasks })}
             />
           </>
         )}

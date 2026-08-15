@@ -1,4 +1,4 @@
-import { STAGE_NAMES } from '../ProgressSection';
+import { ProgressService } from '../../services/ProgressService';
 
 interface Props {
   levelUpToast: { level: number; stage: number } | null;
@@ -33,7 +33,7 @@ export default function ToastContainer({
             <div>
               <div style={{ fontWeight: 800, fontSize: '16px', color: '#ffd700' }}>НОВЫЙ УРОВЕНЬ!</div>
               <div style={{ fontSize: '14px', marginTop: '2px' }}>Вы достигли <strong>Уровня {levelUpToast.level}</strong></div>
-              <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '2px' }}>Дерево: {STAGE_NAMES[levelUpToast.stage] || 'Выросло!'}</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '2px' }}>Дерево: {ProgressService.STAGE_NAMES[levelUpToast.stage] || 'Выросло!'}</div>
             </div>
             <button className="btn-ghost btn-ghost-xs" style={{ marginLeft: 'auto', outline: 'none' }} onClick={onDismissLevelUp}>✕</button>
           </div>

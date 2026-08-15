@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { Workout, WorkoutTypeDef } from '../types';
 import { WorkoutService } from '../services/WorkoutService';
 import { StorageService } from '../services/StorageService';
+import { getTodayDateString } from '../utils/dateUtils';
 import type { WorkoutFormData } from '../components/sports/WorkoutFormPanel';
 
 export type SortMode = 'date' | 'time' | 'date+time' | 'category';
@@ -41,7 +42,7 @@ export function useWorkoutManagement({
   onUpdate,
   onRenameWorkoutType,
 }: UseWorkoutManagementOptions) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayDateString();
   const [deletedBuiltIn, setDeletedBuiltIn] = useState<Set<string>>(loadDeletedTypes);
   const [savedCustomTypes, setSavedCustomTypes] = useState<WorkoutTypeDef[]>(StorageService.loadCustomWorkoutTypes);
 
@@ -93,7 +94,7 @@ export function useWorkoutManagement({
       let cmp = 0;
       if (sortBy === 'date') cmp = a.date.localeCompare(b.date);
       else if (sortBy === 'time') cmp = a.duration - b.duration;
-      else if (sortBy === 'date+time') cmp = (a.date + a.duration).localeCompare(b.date + b.duration);
+      else if (sortBy === 'date+time') cmp = a.date.localeCompare(b.date) || (a.duration - b.duration);
       else if (sortBy === 'category') cmp = a.workoutType.localeCompare(b.workoutType);
       return sortDir === 'asc' ? cmp : -cmp;
     });

@@ -1,7 +1,6 @@
 import React from 'react';
 import type { Task, Category, Difficulty } from '../../types';
-
-export const DIFFICULTY_XP: Record<Difficulty, number> = { easy: 20, medium: 50, hard: 100 };
+import { DIFFICULTY_META, DIFFICULTY_ORDER } from '../../constants/difficulty';
 
 export interface TaskFormData {
   title: string;
@@ -60,7 +59,7 @@ export const TaskFormPanel: React.FC<Props> = ({
         <select
           className="input-spacex"
           value={form.priority}
-          onChange={e => onChangeForm(f => ({ ...f, priority: e.target.value as any }))}
+          onChange={e => onChangeForm(f => ({ ...f, priority: e.target.value as TaskFormData['priority'] }))}
         >
           <option value="high">🔴 Высокий приоритет</option>
           <option value="medium">🟡 Средний приоритет</option>
@@ -72,12 +71,17 @@ export const TaskFormPanel: React.FC<Props> = ({
           value={form.difficulty}
           onChange={e => {
             const diff = e.target.value as Difficulty;
-            onChangeForm(f => ({ ...f, difficulty: diff, xp: DIFFICULTY_XP[diff] }));
+            onChangeForm(f => ({ ...f, difficulty: diff, xp: DIFFICULTY_META[diff].xp }));
           }}
         >
-          <option value="easy">🟢 Лёгкая (20 XP)</option>
-          <option value="medium">🟡 Средняя (50 XP)</option>
-          <option value="hard">🔴 Сложная (100 XP)</option>
+          {DIFFICULTY_ORDER.map(d => {
+            const meta = DIFFICULTY_META[d];
+            return (
+              <option key={d} value={d}>
+                {meta.emoji} {meta.label} ({meta.xp} XP)
+              </option>
+            );
+          })}
         </select>
 
         <input

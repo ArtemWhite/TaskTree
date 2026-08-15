@@ -1,7 +1,7 @@
 import type { Task, Category, AppData, PomodoroSession, Workout, Book } from '../types';
 import { StorageService } from './StorageService';
-import { TaskService } from './TaskService';
 import { BookModel } from '../models/BookModel';
+import { generateId } from '../utils/id';
 
 export class AppDataManager {
   public static load(): AppData {
@@ -16,7 +16,7 @@ export class AppDataManager {
   public static addTask(data: AppData, task: Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'>): AppData {
     const newTask: Task = {
       ...task,
-      id: TaskService.generateId(),
+      id: generateId(),
       completed: false,
       completedDate: null,
       pomodoroCount: 0,
@@ -50,7 +50,7 @@ export class AppDataManager {
 
   // Categories
   public static addCategory(data: AppData, cat: Omit<Category, 'id'>): AppData {
-    const newCat: Category = { ...cat, id: 'cat-' + TaskService.generateId() };
+    const newCat: Category = { ...cat, id: 'cat-' + generateId() };
     return { ...data, categories: [...data.categories, newCat] };
   }
 
@@ -72,7 +72,7 @@ export class AppDataManager {
     const task = data.tasks.find(t => t.id === taskId);
     const taskTitle = task ? task.title : 'Задача';
     const newSession: PomodoroSession = {
-      id: TaskService.generateId(),
+      id: generateId(),
       taskId,
       taskTitle,
       completedAt: new Date().toISOString(),
@@ -90,7 +90,7 @@ export class AppDataManager {
   public static addWorkout(data: AppData, workout: Omit<Workout, 'id' | 'createdAt'>): AppData {
     const newW: Workout = {
       ...workout,
-      id: 'w-' + TaskService.generateId(),
+      id: 'w-' + generateId(),
       createdAt: new Date().toISOString()
     };
     return { ...data, workouts: [...(data.workouts || []), newW] };
@@ -124,7 +124,7 @@ export class AppDataManager {
     const xpEarned = BookModel.calculateXP(book.totalPages, book.status);
     const newB: Book = {
       ...book,
-      id: 'b-' + TaskService.generateId(),
+      id: 'b-' + generateId(),
       createdAt: new Date().toISOString(),
       completedAt: book.status === 'completed' ? new Date().toISOString() : null,
       xp: xpEarned

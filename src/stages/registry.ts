@@ -24,17 +24,6 @@ const STAGES: StageConfig[] = [
   ...stages45_49,
 ];
 
-/** Get the config for an exact integer stage */
-export function getStageConfig(stage: number): StageConfig {
-  const idx = Math.max(0, Math.min(49, Math.round(stage)));
-  return STAGES[idx];
-}
-
-/** Get all stage configs */
-export function getAllStages(): StageConfig[] {
-  return STAGES;
-}
-
 /* ── Color interpolation utilities ── */
 
 /** Parse hex color to {r,g,b} */

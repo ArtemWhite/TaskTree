@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Category } from '../../types';
+import { DIFFICULTY_META, DIFFICULTY_ORDER } from '../../constants/difficulty';
 
 export type TaskSortBy = 'createdAt' | 'completedDate' | 'deadline' | 'title' | 'createdAt+deadline' | 'priority';
 
@@ -88,9 +89,14 @@ export const TaskFilterBar: React.FC<Props> = ({
           onChange={e => onFilterDifficultyChange(e.target.value)}
         >
           <option value="all">Вся сложность</option>
-          <option value="easy">Лёгкая (20 XP)</option>
-          <option value="medium">Средняя (50 XP)</option>
-          <option value="hard">Сложная (100 XP)</option>
+          {DIFFICULTY_ORDER.map(d => {
+            const meta = DIFFICULTY_META[d];
+            return (
+              <option key={d} value={d}>
+                {meta.label} ({meta.xp} XP)
+              </option>
+            );
+          })}
         </select>
 
         <select

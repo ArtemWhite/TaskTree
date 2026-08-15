@@ -1,4 +1,6 @@
 import type { Task } from '../../types';
+import { DIFFICULTY_META, DIFFICULTY_ORDER } from '../../constants/difficulty';
+import { formatXP } from '../../utils/formatUtils';
 
 interface Props {
   tasks: Task[];
@@ -20,22 +22,21 @@ export default function DifficultyTable({ tasks }: Props) {
           </tr>
         </thead>
         <tbody>
-          {(['easy', 'medium', 'hard'] as const).map(diff => {
-            const label = diff === 'easy' ? '🟢 Лёгкая' : diff === 'medium' ? '🟡 Средняя' : '🔴 Сложная';
-            const xpVal = diff === 'easy' ? 20 : diff === 'medium' ? 50 : 100;
+          {DIFFICULTY_ORDER.map(diff => {
+            const meta = DIFFICULTY_META[diff];
             const active = tasks.filter(t => !t.completed && t.difficulty === diff).length;
             const done = tasks.filter(t => t.completed && t.difficulty === diff).length;
             const total = active + done;
-            const earnedXP = done * xpVal;
+            const earnedXP = done * meta.xp;
 
             return (
               <tr key={diff}>
-                <td style={{ fontWeight: 600 }}>{label}</td>
-                <td>{xpVal} XP</td>
+                <td style={{ fontWeight: 600 }}>{meta.emoji} {meta.label}</td>
+                <td>{meta.xp} XP</td>
                 <td>{active}</td>
                 <td>{done}</td>
                 <td>{total}</td>
-                <td>+{earnedXP} XP</td>
+                <td>{formatXP(earnedXP)}</td>
               </tr>
             );
           })}

@@ -37,7 +37,7 @@ export class AnalyticsService {
     });
 
     pomodoroHistory.forEach(p => {
-      const dateStr = p.completedAt || (p as any).timestamp || '';
+      const dateStr = p.completedAt;
       const key = dateStr.slice(0, 10);
       if (map[key]) {
         map[key].pomodoro++;
@@ -63,7 +63,7 @@ export class AnalyticsService {
     > = {};
 
     categories.forEach(c => {
-      map[c.id] = { name: c.name, emoji: c.emoji, color: c.color, value: 0, xp: 0, tasks: [] };
+      map[c.id] = { name: c.name, emoji: c.emoji ?? '', color: c.color, value: 0, xp: 0, tasks: [] };
     });
 
     tasks.filter(t => t.completed).forEach(t => {

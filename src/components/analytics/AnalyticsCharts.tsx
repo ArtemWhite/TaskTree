@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 
 interface AnalyticsChartsProps {
-  data: Record<string, any>[];
+  data: Record<string, string | number>[];
   dataKey: string;
   color: string;
   chartType: ChartType;

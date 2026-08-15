@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Task, Category } from '../../types';
+import { formatXP } from '../../utils/formatUtils';
 
 interface Props {
   tasks: Task[];
@@ -58,9 +59,9 @@ export default function TaskSummaryTable({ tasks, categories }: Props) {
                 <td>{a?.easy || 0}</td>
                 <td>{a?.medium || 0}</td>
                 <td>{a?.hard || 0}</td>
-                <td>+{a?.totalXP || 0} XP</td>
+                <td>{formatXP(a?.totalXP || 0)}</td>
                 <td>{d?.count || 0}</td>
-                <td>+{d?.xp || 0} XP</td>
+                <td>{formatXP(d?.xp || 0)}</td>
               </tr>
             );
           })}
@@ -72,9 +73,9 @@ export default function TaskSummaryTable({ tasks, categories }: Props) {
             <td>{tasks.filter(t => !t.completed && t.difficulty === 'easy').length}</td>
             <td>{tasks.filter(t => !t.completed && t.difficulty === 'medium').length}</td>
             <td>{tasks.filter(t => !t.completed && t.difficulty === 'hard').length}</td>
-            <td>+{tasks.filter(t => !t.completed).reduce((s, t) => s + t.xp, 0)} XP</td>
+            <td>{formatXP(tasks.filter(t => !t.completed).reduce((s, t) => s + t.xp, 0))}</td>
             <td style={{ fontWeight: 700 }}>{tasks.filter(t => t.completed).length}</td>
-            <td>+{tasks.filter(t => t.completed).reduce((s, t) => s + t.xp, 0)} XP</td>
+            <td>{formatXP(tasks.filter(t => t.completed).reduce((s, t) => s + t.xp, 0))}</td>
           </tr>
         </tfoot>
       </table>

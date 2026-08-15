@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Workout } from '../../types';
 import { WorkoutService } from '../../services/WorkoutService';
+import { formatXP } from '../../utils/formatUtils';
 
 interface Props {
   workouts: Workout[];
@@ -54,7 +55,7 @@ export default function WorkoutSummaryTable({ workouts }: Props) {
                 <td>{w.total}</td>
                 <td>{w.completed}</td>
                 <td>⏱ {w.duration} мин</td>
-                <td>+{w.xp} XP</td>
+                <td>{formatXP(w.xp)}</td>
               </tr>
             ))}
           </tbody>
@@ -64,7 +65,7 @@ export default function WorkoutSummaryTable({ workouts }: Props) {
               <td style={{ fontWeight: 700 }}>{workouts.length}</td>
               <td style={{ fontWeight: 700 }}>{workouts.filter(w => w.completed).length}</td>
               <td style={{ fontWeight: 700 }}>⏱ {workouts.filter(w => w.completed).reduce((s, w) => s + w.duration, 0)} мин</td>
-              <td style={{ fontWeight: 700 }}>+{workouts.filter(w => w.completed).reduce((s, w) => s + w.xp, 0)} XP</td>
+              <td style={{ fontWeight: 700 }}>{formatXP(workouts.filter(w => w.completed).reduce((s, w) => s + w.xp, 0))}</td>
             </tr>
           </tfoot>
         </table>

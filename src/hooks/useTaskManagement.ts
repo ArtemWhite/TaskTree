@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Task, Category } from '../types';
 import { TaskService } from '../services/TaskService';
+import { PRIORITY_WEIGHTS } from '../constants/priority';
 import type { TaskFormData } from '../components/tasks/TaskFormPanel';
 import type { TaskSortBy } from '../components/tasks/TaskFilterBar';
 
@@ -116,9 +117,8 @@ export function useTaskManagement({
         return dir * a.createdAt.localeCompare(b.createdAt);
       }
       if (sortBy === 'priority') {
-        const pMap = { low: 1, medium: 2, high: 3 };
-        const pA = pMap[a.priority || 'medium'];
-        const pB = pMap[b.priority || 'medium'];
+        const pA = PRIORITY_WEIGHTS[a.priority || 'medium'];
+        const pB = PRIORITY_WEIGHTS[b.priority || 'medium'];
         if (pA !== pB) return dir * (pA - pB);
         return dir * a.createdAt.localeCompare(b.createdAt);
       }

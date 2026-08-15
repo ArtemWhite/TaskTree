@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { PomodoroSession } from '../../types';
+import { formatXP } from '../../utils/formatUtils';
 
 interface Props {
   pomodoroHistory: PomodoroSession[];
@@ -67,7 +68,7 @@ export default function PomodoroStatsTable({ pomodoroHistory, onSelectTaskSessio
                   </span>
                 </td>
                 <td>⏱ {p.totalDuration} мин</td>
-                <td>+{p.totalXP} XP</td>
+                <td>{formatXP(p.totalXP)}</td>
               </tr>
             ))}
           </tbody>
@@ -96,7 +97,7 @@ export default function PomodoroStatsTable({ pomodoroHistory, onSelectTaskSessio
                 </span>
               </td>
               <td style={{ fontWeight: 700 }}>⏱ {totalPomodoroMinutes} мин</td>
-              <td style={{ fontWeight: 700 }}>+{pomodoroHistory.reduce((s, p) => s + p.xpEarned, 0)} XP</td>
+              <td style={{ fontWeight: 700 }}>{formatXP(pomodoroHistory.reduce((s, p) => s + p.xpEarned, 0))}</td>
             </tr>
           </tfoot>
         </table>

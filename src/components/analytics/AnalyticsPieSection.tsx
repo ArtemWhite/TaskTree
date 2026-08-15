@@ -1,15 +1,29 @@
 import { useState, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
+import type { PieLabelRenderProps, PieSectorDataItem } from 'recharts';
+import type { PopupItem } from './AnalyticsPopupModal';
 
 const CHART_COLORS = ['#ffffff', '#f0f0fa', '#a0a0ff', '#5aaa6f', '#ffb7c5', '#ffd700', '#87ceeb', '#ff9eb5'];
 
+export interface PieSliceData {
+  name: string;
+  value: number;
+  currentValue: number;
+  duration?: number;
+  color: string;
+  emoji?: string;
+  icon?: string;
+  xp: number;
+  tasks: PopupItem[];
+}
+
 interface AnalyticsPieSectionProps {
-  data: any[];
+  data: PieSliceData[];
   title: string;
-  pieRef: React.RefObject<HTMLDivElement>;
+  pieRef: React.RefObject<HTMLDivElement | null>;
   sportPieMode?: 'count' | 'duration';
   onModeChange?: (mode: 'count' | 'duration') => void;
-  onSliceClick: (item: any) => void;
+  onSliceClick: (item: PieSliceData) => void;
 }
 
 interface SectorInfo {
@@ -76,12 +90,13 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
               rootTabIndex={-1}
               onMouseEnter={(_, index) => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(-1)}
-              onMouseDown={(_data, index, e: any) => {
+              onMouseDown={(_data: PieSectorDataItem, index: number, e: React.MouseEvent<SVGGraphicsElement>) => {
                 e.preventDefault();
                 const d = data[index];
                 if (d) onSliceClick(d);
               }}
-              label={({ cx, cy, midAngle, startAngle, endAngle, outerRadius, payload, index }: any) => {
+              label={({ cx, cy, midAngle = 0, startAngle, endAngle, outerRadius, payload, index }: PieLabelRenderProps) => {
+                const p = (payload ?? {}) as Partial<PieSliceData>;
                 if (startAngle !== undefined && endAngle !== undefined && cx !== undefined && cy !== undefined) {
                   sectorInfoMapRef.current[index] = { startAngle, endAngle, cx, cy };
                 }
@@ -97,13 +112,13 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
                 const ey = cy + lineEndR * sin;
                 const tx = cx + textR * cos;
                 const ty = cy + textR * sin;
-                const color = payload?.color || '#ffffff';
+                const color = p.color || '#ffffff';
                 const textAnchor = tx > cx ? 'start' : 'end';
-                const icon = payload?.emoji || payload?.icon || '';
+                const icon = p.emoji || p.icon || '';
                 const displayVal =
                   sportPieMode === 'duration'
-                    ? `${payload?.duration || 0} мин`
-                    : `${payload?.value || 0}`;
+                    ? `${p.duration || 0} мин`
+                    : `${p.value || 0}`;
 
                 return (
                   <g style={{ transition: 'opacity 0.2s ease', opacity: activeIndex === -1 || isActive ? 1 : 0.4 }}>
@@ -122,7 +137,7 @@ export const AnalyticsPieSection: React.FC<AnalyticsPieSectionProps> = ({
                       fontSize={isActive ? 13 : 12}
                       fontWeight={isActive ? 700 : 600}
                     >
-                      {icon} {payload?.name} ({displayVal})
+                      {icon} {p.name} ({displayVal})
                     </text>
                   </g>
                 );

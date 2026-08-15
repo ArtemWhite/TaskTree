@@ -11,7 +11,10 @@ export class SoundSynthesizer {
 
   private getAudioContext(): AudioContext {
     if (!this.audioCtx) {
-      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtxClass: typeof AudioContext | undefined =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtxClass) throw new Error('Web Audio API unavailable');
       this.audioCtx = new AudioCtxClass();
     }
     if (this.audioCtx.state === 'suspended') {

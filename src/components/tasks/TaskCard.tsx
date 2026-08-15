@@ -1,5 +1,7 @@
 import React from 'react';
 import type { Category, Task } from '../../types';
+import { getDifficultyLabel } from '../../constants/difficulty';
+import { getPriorityMeta } from '../../constants/priority';
 
 interface TaskCardProps {
   task: Task;
@@ -22,19 +24,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onStartPomodoro,
   onShowPomodoroHistory,
 }) => {
-  const getPriorityStyle = (p?: 'low' | 'medium' | 'high') => {
-    if (p === 'high') return { label: 'ВЫСОКИЙ', color: '#ff6b6b', bg: 'rgba(255, 107, 107, 0.1)' };
-    if (p === 'low') return { label: 'НИЗКИЙ', color: '#74b9ff', bg: 'rgba(116, 185, 255, 0.1)' };
-    return { label: 'СРЕДНИЙ', color: '#ff9f43', bg: 'rgba(255, 159, 67, 0.1)' };
-  };
-
-  const prio = getPriorityStyle(task.priority);
-
-  const getDifficultyLabel = (diff: Task['difficulty']) => {
-    if (diff === 'easy') return '🟢 Лёгкая';
-    if (diff === 'hard') return '🔴 Сложная';
-    return '🟡 Средняя';
-  };
+  const prio = getPriorityMeta(task.priority);
 
   return (
     <div

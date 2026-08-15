@@ -1,4 +1,4 @@
-import type { AppData, Difficulty, LevelInfo, TreeStage } from '../types';
+import type { AppData, LevelInfo, TreeStage } from '../types';
 
 export class XPService {
   private static readonly LEVEL_THRESHOLDS = XPService.generateLevelThresholds();
@@ -13,15 +13,6 @@ export class XPService {
       step = Math.round(step * 1.2);
     }
     return thresholds;
-  }
-
-  public static getTaskXP(difficulty: Difficulty): number {
-    switch (difficulty) {
-      case 'hard': return 35;
-      case 'medium': return 20;
-      case 'easy':
-      default: return 10;
-    }
   }
 
   public static getLevelInfo(totalXP: number): LevelInfo {

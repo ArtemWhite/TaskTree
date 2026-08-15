@@ -23,7 +23,7 @@ export function useAnimatedPieData<T extends { name: string; value: number; dura
 
     const startValues: Record<string, number> = {};
     targetData.forEach(d => {
-      startValues[d.name] = currentValuesRef.current[d.name] ?? (mode === 'count' ? d.duration : d.value);
+      startValues[d.name] = currentValuesRef.current[d.name] ?? (mode === 'count' ? d.value : d.duration);
     });
 
     const targetValues: Record<string, number> = {};

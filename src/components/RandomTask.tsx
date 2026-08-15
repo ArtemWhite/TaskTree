@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Task } from '../types';
+import { DIFFICULTY_META } from '../constants/difficulty';
 
 interface Props { tasks: Task[]; onActivate: () => void; }
 
@@ -28,14 +29,14 @@ export default function RandomTask({ tasks, onActivate }: Props) {
             {rolledTask ? (
               <>
                 <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-                  {rolledTask.difficulty === 'easy' ? '🟢' : rolledTask.difficulty === 'medium' ? '🟡' : '🔴'}
+                  {DIFFICULTY_META[rolledTask.difficulty].emoji}
                 </div>
                 <p style={{ fontSize: '20px', fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif', fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '8px' }}>
                   {rolledTask.title}
                 </p>
                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
                   <span className="badge">
-                    {rolledTask.difficulty === 'easy' ? 'ЛЁГКАЯ' : rolledTask.difficulty === 'medium' ? 'СРЕДНЯЯ' : 'СЛОЖНАЯ'}
+                    {DIFFICULTY_META[rolledTask.difficulty].label.toUpperCase()}
                   </span>
                   <span className="badge">+{rolledTask.xp} XP</span>
                 </div>
