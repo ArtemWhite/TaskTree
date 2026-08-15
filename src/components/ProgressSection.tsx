@@ -1,11 +1,9 @@
-import { useState } from 'react';
-import type { TreeStage, PomodoroSession } from '../types';
+import type { TreeStage } from '../types';
 import { useTreeInteractiveView } from '../hooks/useTreeInteractiveView';
 import { TreeViewportFrame } from './progress/TreeViewportFrame';
 import { StageHeaderControls } from './progress/StageHeaderControls';
 import { StageProgressBar } from './progress/StageProgressBar';
 import { ProgressStatsGrid } from './progress/ProgressStatsGrid';
-import PomodoroHistoryModal from './common/PomodoroHistoryModal';
 
 interface Props {
   totalXP: number;
@@ -14,7 +12,6 @@ interface Props {
   activeCount: number;
   completedCount: number;
   pomodoroSessions: number;
-  pomodoroHistory?: PomodoroSession[];
   workoutsCount?: number;
   workoutsDuration?: number;
   booksCount?: number;
@@ -32,7 +29,6 @@ export default function ProgressSection({
   activeCount,
   completedCount,
   pomodoroSessions,
-  pomodoroHistory = [],
   workoutsCount = 0,
   workoutsDuration = 0,
   booksCount = 0,
@@ -43,7 +39,6 @@ export default function ProgressSection({
   treeSize,
 }: Props) {
   const baseSize = treeSize || (large ? 320 : 200);
-  const [showPomodoroModal, setShowPomodoroModal] = useState(false);
 
   const {
     displayStage,
@@ -105,7 +100,6 @@ export default function ProgressSection({
       workoutsDuration={workoutsDuration}
       booksCount={booksCount}
       booksPages={booksPages}
-      onShowPomodoroHistory={() => setShowPomodoroModal(true)}
     />
   );
 
@@ -141,14 +135,6 @@ export default function ProgressSection({
           <StageProgressBar levelInfo={levelInfo} totalXP={totalXP} sideLayout={sideLayout} />
           {statsGrid}
         </div>
-      )}
-
-      {showPomodoroModal && (
-        <PomodoroHistoryModal
-          title="Все выполненные фокус-сессии"
-          sessions={pomodoroHistory}
-          onClose={() => setShowPomodoroModal(false)}
-        />
       )}
     </>
   );

@@ -6,7 +6,6 @@ export type TreeStage = number; // 0–49 стадий роста
 
 export interface AppSettings {
   pomodoroWorkMinutes: number;
-  pomodoroBonusXP: number;
 }
 
 export interface AppData {

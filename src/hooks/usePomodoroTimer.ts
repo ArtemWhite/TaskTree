@@ -53,7 +53,7 @@ export function usePomodoroTimer({ task, settings, minimized, onSessionFinished 
         setEndTime(null);
         setPausedRemainingMs(0);
         PomodoroEngine.playCompletionAudio(task.title);
-        onSessionFinished(minimizedRef.current, settings.pomodoroBonusXP, settings.pomodoroWorkMinutes);
+        onSessionFinished(minimizedRef.current, PomodoroEngine.calculateXP(settings.pomodoroWorkMinutes), settings.pomodoroWorkMinutes);
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
@@ -67,7 +67,7 @@ export function usePomodoroTimer({ task, settings, minimized, onSessionFinished 
         intervalRef.current = null;
       }
     };
-  }, [isRunning, endTime, settings.pomodoroBonusXP, settings.pomodoroWorkMinutes, task.title, onSessionFinished]);
+  }, [isRunning, endTime, settings.pomodoroWorkMinutes, task.title, onSessionFinished]);
 
   // Reset/sync when work minutes setting changes
   useEffect(() => {

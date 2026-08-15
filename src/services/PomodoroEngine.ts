@@ -7,6 +7,10 @@ export class PomodoroEngine {
     return Math.min(1, Math.max(0, 1 - remainingMs / totalMs));
   }
 
+  public static calculateXP(durationMinutes: number): number {
+    return Math.round(durationMinutes / 3);
+  }
+
   public static formatTimeDisplay(remainingMs: number): string {
     const displaySec = Math.ceil(remainingMs / 1000);
     const minutes = Math.floor(displaySec / 60);

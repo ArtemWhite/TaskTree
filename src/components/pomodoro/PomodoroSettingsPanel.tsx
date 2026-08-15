@@ -10,7 +10,6 @@ interface Props {
 export const PomodoroSettingsPanel: React.FC<Props> = ({ settings, onUpdateSettings, onResetTimer }) => {
   const [editMode, setEditMode] = useState(false);
   const [customMin, setCustomMin] = useState(settings.pomodoroWorkMinutes);
-  const [customXP, setCustomXP] = useState(settings.pomodoroBonusXP);
 
   useEffect(() => {
     setCustomMin(settings.pomodoroWorkMinutes);
@@ -19,7 +18,6 @@ export const PomodoroSettingsPanel: React.FC<Props> = ({ settings, onUpdateSetti
   const applyCustom = () => {
     onUpdateSettings({
       pomodoroWorkMinutes: Math.max(1, Math.min(120, customMin)),
-      pomodoroBonusXP: Math.max(1, Math.min(100, customXP)),
     });
   };
 
@@ -93,39 +91,6 @@ export const PomodoroSettingsPanel: React.FC<Props> = ({ settings, onUpdateSetti
                   ▲
                 </button>
                 <button type="button" className="spin-btn" onClick={() => setCustomMin(m => Math.max(m - 1, 1))}>
-                  ▼
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span
-              style={{
-                fontSize: '11px',
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.8px',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              XP:
-            </span>
-            <div className="spin-wrap" style={{ width: '75px' }}>
-              <input
-                type="number"
-                className="input-spacex spin-input"
-                style={{ textAlign: 'center', padding: '8px 6px' }}
-                value={customXP}
-                min={1}
-                max={100}
-                onChange={e => setCustomXP(Number(e.target.value) || 1)}
-              />
-              <div className="spin-btns">
-                <button type="button" className="spin-btn" onClick={() => setCustomXP(x => Math.min(x + 1, 100))}>
-                  ▲
-                </button>
-                <button type="button" className="spin-btn" onClick={() => setCustomXP(x => Math.max(x - 1, 1))}>
                   ▼
                 </button>
               </div>

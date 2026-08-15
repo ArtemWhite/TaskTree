@@ -134,7 +134,6 @@ export default function App() {
                 totalXP={totalXP} treeStage={treeStage} levelInfo={levelInfo}
                 activeCount={activeTasks.length} completedCount={completedTasks.length}
                 pomodoroSessions={data.pomodoroHistory.length}
-                pomodoroHistory={data.pomodoroHistory}
                 workoutsCount={(data.workouts || []).filter(w => w.completed).length}
                 workoutsDuration={(data.workouts || []).filter(w => w.completed).reduce((s, w) => s + w.duration, 0)}
                 booksCount={(data.books || []).filter(b => b.status === 'completed').length}

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { Book } from '../types';
 import { BookCard } from './books/BookCard';
+import Modal from './common/Modal';
 
 interface Props {
   books: Book[];
@@ -99,50 +100,48 @@ export default function BooksSection({ books, onAdd, onUpdate, onDelete }: Props
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={resetForm}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3 className="micro-cap" style={{ marginBottom: '20px' }}>
-              {editingId ? 'РЕДАКТИРОВАТЬ КНИГУ' : 'НОВАЯ КНИГА'}
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input className="input-spacex" placeholder="Название книги" value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus />
-              <input className="input-spacex" placeholder="Автор" value={form.author}
-                onChange={e => setForm(f => ({ ...f, author: e.target.value }))} />
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <select className="input-spacex" style={{ flex: 1 }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as 'reading' | 'planned' | 'completed' }))}>
-                  <option value="planned">В планах</option>
-                  <option value="reading">Читаю</option>
-                  <option value="completed">Прочитано</option>
-                </select>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label className="micro-cap">Страницы</label>
-                  <input className="input-spacex" type="number" style={{ width: '80px', textAlign: 'center' }} value={form.totalPages}
-                    onChange={e => setForm(f => ({ ...f, totalPages: Number(e.target.value) || 0 }))} placeholder="Всего" />
-                </div>
+        <Modal onClose={resetForm}>
+          <h3 className="micro-cap" style={{ marginBottom: '20px' }}>
+            {editingId ? 'РЕДАКТИРОВАТЬ КНИГУ' : 'НОВАЯ КНИГА'}
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input className="input-spacex" placeholder="Название книги" value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus />
+            <input className="input-spacex" placeholder="Автор" value={form.author}
+              onChange={e => setForm(f => ({ ...f, author: e.target.value }))} />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <select className="input-spacex" style={{ flex: 1 }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as 'reading' | 'planned' | 'completed' }))}>
+                <option value="planned">В планах</option>
+                <option value="reading">Читаю</option>
+                <option value="completed">Прочитано</option>
+              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label className="micro-cap">Страницы</label>
+                <input className="input-spacex" type="number" style={{ width: '80px', textAlign: 'center' }} value={form.totalPages}
+                  onChange={e => setForm(f => ({ ...f, totalPages: Number(e.target.value) || 0 }))} placeholder="Всего" />
               </div>
-              
-              {form.status === 'completed' && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <label className="micro-cap">Оценка (1-5)</label>
-                    <input type="range" min="0" max="5" step="1" value={form.rating}
-                      onChange={e => setForm(f => ({ ...f, rating: Number(e.target.value) }))} />
-                    <span>{form.rating > 0 ? '⭐'.repeat(form.rating) : 'Без оценки'}</span>
-                  </div>
-                  <textarea className="input-spacex" placeholder="Ваш отзыв или заметки..." value={form.review}
-                    onChange={e => setForm(f => ({ ...f, review: e.target.value }))} rows={3} style={{ resize: 'vertical' }} />
-                </>
-              )}
             </div>
-            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-              <button className="btn-ghost" onClick={handleSubmit}>
-                {editingId ? 'СОХРАНИТЬ' : 'ДОБАВИТЬ'}
-              </button>
-              <button className="btn-ghost btn-ghost-sm" onClick={resetForm}>ОТМЕНА</button>
-            </div>
+
+            {form.status === 'completed' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label className="micro-cap">Оценка (1-5)</label>
+                  <input type="range" min="0" max="5" step="1" value={form.rating}
+                    onChange={e => setForm(f => ({ ...f, rating: Number(e.target.value) }))} />
+                  <span>{form.rating > 0 ? '⭐'.repeat(form.rating) : 'Без оценки'}</span>
+                </div>
+                <textarea className="input-spacex" placeholder="Ваш отзыв или заметки..." value={form.review}
+                  onChange={e => setForm(f => ({ ...f, review: e.target.value }))} rows={3} style={{ resize: 'vertical' }} />
+              </>
+            )}
           </div>
-        </div>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+            <button className="btn-ghost" onClick={handleSubmit}>
+              {editingId ? 'СОХРАНИТЬ' : 'ДОБАВИТЬ'}
+            </button>
+            <button className="btn-ghost btn-ghost-sm" onClick={resetForm}>ОТМЕНА</button>
+          </div>
+        </Modal>
       )}
 
       <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>

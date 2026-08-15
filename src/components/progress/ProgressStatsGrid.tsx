@@ -4,19 +4,10 @@ interface StatBoxProps {
   label: string;
   value: number;
   suffix?: string;
-  onClick?: () => void;
-  title?: string;
 }
 
-export const StatBox: React.FC<StatBoxProps> = ({ label, value, suffix, onClick, title }) => (
-  <div
-    style={{
-      cursor: onClick ? 'pointer' : 'default',
-      transition: 'transform 0.15s ease',
-    }}
-    onClick={onClick}
-    title={title}
-  >
+export const StatBox: React.FC<StatBoxProps> = ({ label, value, suffix }) => (
+  <div>
     <div className="micro-cap" style={{ marginBottom: '4px' }}>
       {label}
     </div>
@@ -25,7 +16,6 @@ export const StatBox: React.FC<StatBoxProps> = ({ label, value, suffix, onClick,
         fontSize: '24px',
         fontFamily: '"D-DIN-Bold","Inter","Arial Narrow",sans-serif',
         fontWeight: 700,
-        color: onClick ? '#ffb7c5' : 'inherit',
       }}
     >
       {value} {suffix && <span style={{ fontSize: '14px', color: 'var(--text-soft)', fontWeight: 400 }}>{suffix}</span>}
@@ -41,7 +31,6 @@ interface ProgressStatsGridProps {
   workoutsDuration: number;
   booksCount: number;
   booksPages: number;
-  onShowPomodoroHistory?: () => void;
 }
 
 export const ProgressStatsGrid: React.FC<ProgressStatsGridProps> = ({
@@ -52,18 +41,12 @@ export const ProgressStatsGrid: React.FC<ProgressStatsGridProps> = ({
   workoutsDuration,
   booksCount,
   booksPages,
-  onShowPomodoroHistory,
 }) => {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '20px', marginTop: '24px' }}>
       <StatBox label="АКТИВНЫХ ЗАДАЧ" value={activeCount} />
       <StatBox label="ВЫПОЛНЕННЫХ ЗАДАЧ" value={completedCount} />
-      <StatBox
-        label="ПОМОДОРО-СЕССИЙ"
-        value={pomodoroSessions}
-        onClick={onShowPomodoroHistory}
-        title={onShowPomodoroHistory ? 'Нажмите, чтобы посмотреть историю помодоро' : undefined}
-      />
+      <StatBox label="ПОМОДОРО-СЕССИЙ" value={pomodoroSessions} />
       <StatBox label="ТРЕНИРОВОК" value={workoutsCount} />
       <StatBox label="ВРЕМЯ ТРЕНИРОВОК" value={workoutsDuration} suffix="мин" />
       <StatBox label="КНИГ ПРОЧИТАНО" value={booksCount} />

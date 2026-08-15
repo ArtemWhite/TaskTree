@@ -12,7 +12,6 @@ export class StorageService {
 
   public static readonly DEFAULT_SETTINGS: AppSettings = {
     pomodoroWorkMinutes: 25,
-    pomodoroBonusXP: 5,
   };
 
   public static loadAppData(): AppData {

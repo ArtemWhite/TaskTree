@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Task, AppSettings } from '../../types';
+import { PomodoroEngine } from '../../services/PomodoroEngine';
 
 interface Props {
   task: Task;
@@ -44,7 +45,7 @@ export const PomodoroControls: React.FC<Props> = ({
         </p>
         <p style={{ fontSize: '14px', color: 'var(--text-soft)', marginBottom: '16px' }}>
           Фокус-сессия по задаче «{task.title}» завершена.
-          <br />+{settings.pomodoroBonusXP} бонусного XP!
+          <br />+{PomodoroEngine.calculateXP(settings.pomodoroWorkMinutes)} XP!
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <button className="btn-ghost" onClick={onClose}>

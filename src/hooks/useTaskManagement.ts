@@ -54,7 +54,7 @@ export function useTaskManagement({
   const [sortBy, setSortBy] = useState<TaskSortBy>('priority');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupByDate, setGroupByDate] = useState(true);
-  const [groupByField, setGroupByField] = useState<'createdAt' | 'deadline'>('createdAt');
+  const [groupByField, setGroupByField] = useState<'createdAt' | 'deadline'>('deadline');
   const [groupSortDir, setGroupSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Selected task for pomodoro history modal
