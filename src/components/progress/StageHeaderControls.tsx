@@ -42,6 +42,11 @@ export const StageHeaderControls: React.FC<Props> = ({
             top: '50%',
             transform: 'translateY(-50%)',
             zIndex: 2,
+            width: '44px',
+            height: '44px',
+            padding: 0,
+            fontSize: '20px',
+            borderRadius: '50%',
           }}
           title="Предыдущая стадия"
         >
@@ -57,7 +62,7 @@ export const StageHeaderControls: React.FC<Props> = ({
             textTransform: 'uppercase',
             lineHeight: '1.25',
             textAlign: 'center',
-            padding: '0 48px',
+            padding: '0 60px',
             maxHeight: '76px',
             overflow: 'hidden',
             display: '-webkit-box',
@@ -78,6 +83,11 @@ export const StageHeaderControls: React.FC<Props> = ({
             top: '50%',
             transform: 'translateY(-50%)',
             zIndex: 2,
+            width: '44px',
+            height: '44px',
+            padding: 0,
+            fontSize: '20px',
+            borderRadius: '50%',
           }}
           title="Следующая стадия"
         >

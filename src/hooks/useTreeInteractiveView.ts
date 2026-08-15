@@ -25,7 +25,7 @@ export function useTreeInteractiveView({ treeStage, levelInfo, initialZoom = 1.1
   }, [treeStage]);
 
   const actualFractionalStage = treeStage + (levelInfo.next > 0 ? Math.min(1, levelInfo.current / levelInfo.next) : 0);
-  const viewFractionalStage = isViewingPastStage ? Math.min(displayStage + 0.95, 49) : actualFractionalStage;
+  const viewFractionalStage = isViewingPastStage ? Math.min(displayStage + 0.5, 49) : actualFractionalStage;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -63,18 +63,13 @@ export function useTreeInteractiveView({ treeStage, levelInfo, initialZoom = 1.1
   };
 
   const nextStage = () => {
-    setViewStage(prev => {
-      const current = prev ?? treeStage;
-      return current < treeStage ? current + 1 : prev;
-    });
+    const next = displayStage + 1;
+    setViewStage(next >= treeStage ? null : next);
   };
 
   const prevStage = () => {
-    setViewStage(prev => {
-      const current = prev ?? treeStage;
-      const target = current - 1;
-      return target <= 0 ? 0 : target;
-    });
+    const prev = displayStage - 1;
+    setViewStage(prev <= 0 ? 0 : prev);
   };
 
   const resetStage = () => {

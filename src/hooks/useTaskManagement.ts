@@ -51,7 +51,7 @@ export function useTaskManagement({
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<TaskSortBy>('createdAt');
+  const [sortBy, setSortBy] = useState<TaskSortBy>('priority');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupByDate, setGroupByDate] = useState(true);
   const [groupByField, setGroupByField] = useState<'createdAt' | 'deadline'>('createdAt');
@@ -99,30 +99,9 @@ export function useTaskManagement({
     const dir = sortDir === 'asc' ? 1 : -1;
     return [...list].sort((a, b) => {
       if (sortBy === 'title') return dir * a.title.localeCompare(b.title, 'ru');
-      if (sortBy === 'completedDate') {
-        const dA = a.completedDate || a.createdAt;
-        const dB = b.completedDate || b.createdAt;
-        return dir * dA.localeCompare(dB);
-      }
-      if (sortBy === 'deadline') {
-        if (!a.deadline && !b.deadline) return 0;
-        if (!a.deadline) return 1;
-        if (!b.deadline) return -1;
-        return dir * a.deadline.localeCompare(b.deadline);
-      }
-      if (sortBy === 'createdAt+deadline') {
-        const aDL = a.deadline || '9999-99-99';
-        const bDL = b.deadline || '9999-99-99';
-        const dlCmp = dir * aDL.localeCompare(bDL);
-        if (dlCmp !== 0) return dlCmp;
-        return dir * a.createdAt.localeCompare(b.createdAt);
-      }
-      if (sortBy === 'priority') {
-        const pA = PRIORITY_WEIGHTS[a.priority || 'medium'];
-        const pB = PRIORITY_WEIGHTS[b.priority || 'medium'];
-        if (pA !== pB) return dir * (pA - pB);
-        return dir * a.createdAt.localeCompare(b.createdAt);
-      }
+      const pA = PRIORITY_WEIGHTS[a.priority || 'medium'];
+      const pB = PRIORITY_WEIGHTS[b.priority || 'medium'];
+      if (pA !== pB) return dir * (pA - pB);
       return dir * a.createdAt.localeCompare(b.createdAt);
     });
   }, [tasks, completedTasks, filterCategory, filterDifficulty, searchTerm, subtab, sortBy, sortDir]);

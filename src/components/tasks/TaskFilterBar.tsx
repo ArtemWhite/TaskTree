@@ -2,7 +2,7 @@ import React from 'react';
 import type { Category } from '../../types';
 import { DIFFICULTY_META, DIFFICULTY_ORDER } from '../../constants/difficulty';
 
-export type TaskSortBy = 'createdAt' | 'completedDate' | 'deadline' | 'title' | 'createdAt+deadline' | 'priority';
+export type TaskSortBy = 'title' | 'priority';
 
 interface Props {
   showForm: boolean;
@@ -109,10 +109,7 @@ export const TaskFilterBar: React.FC<Props> = ({
           value={sortBy}
           onChange={e => onSortByChange(e.target.value as TaskSortBy)}
         >
-          <option value="createdAt">По дате создания</option>
-          <option value="completedDate">По дате выполнения</option>
           <option value="priority">По приоритету</option>
-          <option value="deadline">По дедлайну</option>
           <option value="title">По алфавиту</option>
         </select>
 

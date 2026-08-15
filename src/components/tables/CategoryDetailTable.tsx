@@ -30,7 +30,7 @@ interface CategoryPomodoroStats {
   sessions: PomodoroSession[];
 }
 
-const thStyle: CSSProperties = { textAlign: 'center', whiteSpace: 'nowrap' };
+const thStyle: CSSProperties = { textAlign: 'center' };
 const tdStyle: CSSProperties = { textAlign: 'center', whiteSpace: 'nowrap' };
 
 export default function CategoryDetailTable({ tasks, categories, pomodoroHistory, onSelectCategorySessions }: Props) {
@@ -71,8 +71,35 @@ export default function CategoryDetailTable({ tasks, categories, pomodoroHistory
     return map;
   }, [pomodoroHistory, taskCategoryMap]);
 
+  const totals = useMemo(() => {
+    let total = 0;
+    let active = 0;
+    let done = 0;
+    let xp = 0;
+    let pomoCount = 0;
+    let pomoDuration = 0;
+    let pomoXP = 0;
+    categories.forEach(c => {
+      const catTasks = tasks.filter(t => t.categoryId === c.id);
+      total += catTasks.length;
+      const catActive = catTasks.filter(t => !t.completed).length;
+      const catDone = catTasks.length - catActive;
+      active += catActive;
+      done += catDone;
+      xp += catTasks.filter(t => t.completed).reduce((s, t) => s + t.xp, 0);
+      const pomo = pomodoroByCategory[c.id];
+      if (pomo) {
+        pomoCount += pomo.count;
+        pomoDuration += pomo.totalDuration;
+        pomoXP += pomo.totalXP;
+      }
+    });
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    return { total, active, done, pct, xp, pomoCount, pomoDuration, pomoXP };
+  }, [categories, tasks, pomodoroByCategory]);
+
   return (
-    <div className="card-panel" style={{ overflowX: 'auto' }}>
+    <div className="card-panel">
       <div
         style={{
           display: 'flex',
@@ -112,7 +139,7 @@ export default function CategoryDetailTable({ tasks, categories, pomodoroHistory
         </div>
       </div>
 
-      <table className="table-spacex" style={{ minWidth: '760px' }}>
+      <table className="table-spacex">
         <thead>
           <tr>
             <th style={{ textAlign: 'center', width: '52px' }}>Иконка</th>
@@ -156,7 +183,7 @@ export default function CategoryDetailTable({ tasks, categories, pomodoroHistory
                     </div>
                   </td>
                 )}
-                {isVisible('xp') && <td style={tdStyle}>+{xp} XP</td>}
+                {isVisible('xp') && <td style={tdStyle}>{formatXP(xp)}</td>}
                 {isVisible('pomoCount') && (
                   <td style={tdStyle}>
                     {pomo.count > 0 ? (
@@ -194,6 +221,31 @@ export default function CategoryDetailTable({ tasks, categories, pomodoroHistory
             );
           })}
         </tbody>
+        <tfoot>
+          <tr style={{ borderTop: '2px solid var(--hairline)' }}>
+            <td style={{ textAlign: 'center', fontSize: '20px' }}>🌳</td>
+            <td style={{ textAlign: 'left', fontWeight: 700, whiteSpace: 'nowrap' }}>ИТОГО</td>
+            {isVisible('total') && <td style={{ ...tdStyle, fontWeight: 700 }}>{totals.total}</td>}
+            {isVisible('active') && <td style={{ ...tdStyle, fontWeight: 700 }}>{totals.active}</td>}
+            {isVisible('done') && <td style={{ ...tdStyle, fontWeight: 700 }}>{totals.done}</td>}
+            {isVisible('pct') && (
+              <td style={{ textAlign: 'left', minWidth: '160px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="progress-bar" style={{ flex: 1, height: '6px' }}>
+                    <div className="progress-bar-fill" style={{ width: `${totals.pct}%` }} />
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: 700, minWidth: '36px', textAlign: 'right' }}>
+                    {totals.pct}%
+                  </span>
+                </div>
+              </td>
+            )}
+            {isVisible('xp') && <td style={tdStyle}>{formatXP(totals.xp)}</td>}
+            {isVisible('pomoCount') && <td style={tdStyle}>{totals.pomoCount > 0 ? `🍅 ×${totals.pomoCount}` : '—'}</td>}
+            {isVisible('pomoDuration') && <td style={tdStyle}>{totals.pomoCount > 0 ? `⏱ ${totals.pomoDuration} мин` : '—'}</td>}
+            {isVisible('pomoXP') && <td style={tdStyle}>{totals.pomoCount > 0 ? formatXP(totals.pomoXP) : '—'}</td>}
+          </tr>
+        </tfoot>
       </table>
     </div>
   );

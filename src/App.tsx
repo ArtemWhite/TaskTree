@@ -85,7 +85,7 @@ export default function App() {
 
       <HeroSection activeTasks={activeTasks} onNavigateTab={setActiveTab} />
 
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+      <main style={{ maxWidth: activeTab === 'tables' ? '1600px' : '1200px', margin: '0 auto', padding: '32px 24px' }}>
         <div key={activeTab} className="tab-fade-in">
           {activeTab === 'tasks' && (
             <TaskSection
