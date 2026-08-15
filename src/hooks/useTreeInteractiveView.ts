@@ -63,12 +63,18 @@ export function useTreeInteractiveView({ treeStage, levelInfo, initialZoom = 1.1
   };
 
   const nextStage = () => {
-    if (displayStage < treeStage) setViewStage(displayStage + 1);
+    setViewStage(prev => {
+      const current = prev ?? treeStage;
+      return current < treeStage ? current + 1 : prev;
+    });
   };
 
   const prevStage = () => {
-    const prev = displayStage - 1;
-    setViewStage(prev <= 0 ? 0 : prev);
+    setViewStage(prev => {
+      const current = prev ?? treeStage;
+      const target = current - 1;
+      return target <= 0 ? 0 : target;
+    });
   };
 
   const resetStage = () => {

@@ -55,6 +55,7 @@ export function useTaskManagement({
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupByDate, setGroupByDate] = useState(true);
   const [groupByField, setGroupByField] = useState<'createdAt' | 'deadline'>('createdAt');
+  const [groupSortDir, setGroupSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Selected task for pomodoro history modal
   const [selectedPomodoroTask, setSelectedPomodoroTask] = useState<Task | null>(null);
@@ -205,6 +206,8 @@ export function useTaskManagement({
     setGroupByDate,
     groupByField,
     setGroupByField,
+    groupSortDir,
+    setGroupSortDir,
     selectedPomodoroTask,
     setSelectedPomodoroTask,
     categoryMap,

@@ -66,6 +66,8 @@ export default function TaskSection({
     setGroupByDate,
     groupByField,
     setGroupByField,
+    groupSortDir,
+    setGroupSortDir,
     selectedPomodoroTask,
     setSelectedPomodoroTask,
     categoryMap,
@@ -136,6 +138,8 @@ export default function TaskSection({
             onToggleSortDir={() => setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
             onToggleGroupByDate={() => setGroupByDate(g => !g)}
             onGroupByFieldChange={setGroupByField}
+            groupSortDir={groupSortDir}
+            onToggleGroupSortDir={() => setGroupSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
           />
 
           {/* Form */}
@@ -164,7 +168,7 @@ export default function TaskSection({
               .sort(([dateA], [dateB]) => {
                 if (dateA === 'Без дедлайна') return 1;
                 if (dateB === 'Без дедлайна') return -1;
-                const dir = sortDir === 'asc' ? 1 : -1;
+                const dir = groupSortDir === 'asc' ? 1 : -1;
                 return dir * dateA.localeCompare(dateB);
               })
               .map(([date, group]) => (

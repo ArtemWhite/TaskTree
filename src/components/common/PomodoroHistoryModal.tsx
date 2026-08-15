@@ -3,11 +3,13 @@ import Modal from './Modal';
 
 interface Props {
   title?: string;
+  label?: string;
+  showTaskTitles?: boolean;
   sessions: PomodoroSession[];
   onClose: () => void;
 }
 
-export default function PomodoroHistoryModal({ title, sessions, onClose }: Props) {
+export default function PomodoroHistoryModal({ title, label = 'Задача', showTaskTitles = false, sessions, onClose }: Props) {
   const totalMinutes = sessions.reduce((s, p) => s + (p.duration || 25), 0);
   const totalXP = sessions.reduce((s, p) => s + p.xpEarned, 0);
 
@@ -22,7 +24,7 @@ export default function PomodoroHistoryModal({ title, sessions, onClose }: Props
 
       {title && (
         <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-          Задача: «{title}»
+          {label}: «{title}»
         </p>
       )}
 
@@ -34,14 +36,14 @@ export default function PomodoroHistoryModal({ title, sessions, onClose }: Props
 
       {sessions.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', padding: '24px 0' }}>
-          Для этой задачи ещё нет завершённых фокус-сессий.
+          Завершённых фокус-сессий пока нет.
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
           {sessions.map((s, idx) => (
             <div key={s.id || idx} style={{ padding: '10px 14px', background: 'var(--surface-hover)', borderRadius: '8px', fontSize: '13px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600 }}>
-                <span>🍅 Сессия #{idx + 1} {!title ? `(«${s.taskTitle}»)` : ''}</span>
+                <span>🍅 Сессия #{idx + 1} {showTaskTitles || !title ? `(«${s.taskTitle}»)` : ''}</span>
                 <span style={{ color: '#60a5fa' }}>⏱ {s.duration || 25} мин</span>
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-soft)', marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>

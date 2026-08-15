@@ -13,6 +13,7 @@ interface Props {
   sortDir: 'asc' | 'desc';
   groupByDate: boolean;
   groupByField: 'createdAt' | 'deadline';
+  groupSortDir: 'asc' | 'desc';
   categories: Category[];
   onToggleForm: () => void;
   onSearchChange: (val: string) => void;
@@ -22,6 +23,7 @@ interface Props {
   onToggleSortDir: () => void;
   onToggleGroupByDate: () => void;
   onGroupByFieldChange: (val: 'createdAt' | 'deadline') => void;
+  onToggleGroupSortDir: () => void;
 }
 
 export const TaskFilterBar: React.FC<Props> = ({
@@ -33,6 +35,7 @@ export const TaskFilterBar: React.FC<Props> = ({
   sortDir,
   groupByDate,
   groupByField,
+  groupSortDir,
   categories,
   onToggleForm,
   onSearchChange,
@@ -42,6 +45,7 @@ export const TaskFilterBar: React.FC<Props> = ({
   onToggleSortDir,
   onToggleGroupByDate,
   onGroupByFieldChange,
+  onToggleGroupSortDir,
 }) => {
   return (
     <div
@@ -125,15 +129,25 @@ export const TaskFilterBar: React.FC<Props> = ({
         </button>
 
         {groupByDate && (
-          <select
-            className="input-spacex"
-            style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }}
-            value={groupByField}
-            onChange={e => onGroupByFieldChange(e.target.value as 'createdAt' | 'deadline')}
-          >
-            <option value="createdAt">По дате создания</option>
-            <option value="deadline">По дедлайну</option>
-          </select>
+          <>
+            <select
+              className="input-spacex"
+              style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }}
+              value={groupByField}
+              onChange={e => onGroupByFieldChange(e.target.value as 'createdAt' | 'deadline')}
+            >
+              <option value="createdAt">По дате создания</option>
+              <option value="deadline">По дедлайну</option>
+            </select>
+
+            <button
+              className="btn-ghost btn-ghost-xs"
+              onClick={onToggleGroupSortDir}
+              title={groupSortDir === 'asc' ? 'Дни: по возрастанию' : 'Дни: по убыванию'}
+            >
+              📅 {groupSortDir === 'asc' ? '↑' : '↓'}
+            </button>
+          </>
         )}
       </div>
     </div>
