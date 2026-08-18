@@ -67,12 +67,33 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             >
               {prio.label}
             </span>
+            {task.isBackdated && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  color: '#f0c36d',
+                  background: 'rgba(240, 195, 109, 0.12)',
+                  border: '1px solid rgba(240, 195, 109, 0.45)',
+                }}
+                title="Задача добавлена задним числом"
+              >
+                ⏪ ИЗ ПРОШЛОГО
+              </span>
+            )}
           </div>
 
           <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span>{category?.emoji || '📝'} {category?.name || 'Без категории'}</span>
             <span>{getDifficultyLabel(task.difficulty)}</span>
             <span>⚡ +{task.xp} XP</span>
+            {task.isBackdated && (
+              <span style={{ color: '#f0c36d', fontWeight: 600 }}>
+                📅 {new Date(task.createdAt).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            )}
             {task.deadline && (() => {
               const isOverdue = !task.completed && new Date(task.deadline).getTime() < Date.now();
               return (

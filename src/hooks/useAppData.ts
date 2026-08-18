@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Task, Category, AppData, CompletedDay, Workout, Book } from '../types';
+import type { Task, Category, AppData, CompletedDay, Workout, Book, NewTaskInput } from '../types';
 import { AppDataManager } from '../services/AppDataManager';
 import { XPService } from '../services/XPService';
 
@@ -15,7 +15,7 @@ export function useAppData() {
   const treeStage = useMemo(() => XPService.getTreeStage(levelInfo.level), [levelInfo.level]);
 
   // Tasks CRUD
-  const addTask = useCallback((task: Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'>) => {
+  const addTask = useCallback((task: NewTaskInput) => {
     setData(d => AppDataManager.addTask(d, task));
   }, []);
 

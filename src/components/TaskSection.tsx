@@ -1,4 +1,4 @@
-import type { Task, Category, PomodoroSession } from '../types';
+import type { Task, Category, PomodoroSession, NewTaskInput } from '../types';
 import { useTaskManagement } from '../hooks/useTaskManagement';
 import { TaskCard } from './tasks/TaskCard';
 import { TaskFormPanel } from './tasks/TaskFormPanel';
@@ -11,7 +11,7 @@ interface Props {
   completedTasks: Task[];
   categories: Category[];
   pomodoroHistory: PomodoroSession[];
-  onAdd: (t: Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'>) => void;
+  onAdd: (t: NewTaskInput) => void;
   onUpdate: (id: string, updates: Partial<Task>) => void;
   onDelete: (id: string) => void;
   onComplete: (id: string) => void;

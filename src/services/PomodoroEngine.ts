@@ -8,7 +8,7 @@ export class PomodoroEngine {
   }
 
   public static calculateXP(durationMinutes: number): number {
-    return Math.round(durationMinutes / 3);
+    return Math.max(1, Math.round(durationMinutes / 3));
   }
 
   public static formatTimeDisplay(remainingMs: number): string {

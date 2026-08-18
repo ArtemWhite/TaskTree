@@ -21,7 +21,14 @@ export interface Task {
   pomodoroCount: number;
   createdAt: string;
   deadline: string | null;
+  isBackdated?: boolean;
 }
+
+export type NewTaskInput = Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'> & {
+  createdAt?: string;
+  completed?: boolean;
+  completedDate?: string | null;
+};
 
 export interface PomodoroSession {
   id: string;

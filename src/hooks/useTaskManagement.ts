@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { Task, Category } from '../types';
+import type { Task, Category, NewTaskInput } from '../types';
 import { TaskService } from '../services/TaskService';
 import { PRIORITY_WEIGHTS } from '../constants/priority';
 import type { TaskFormData } from '../components/tasks/TaskFormPanel';
@@ -9,7 +9,7 @@ interface UseTaskManagementOptions {
   tasks: Task[];
   completedTasks: Task[];
   categories: Category[];
-  onAdd: (t: Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'>) => void;
+  onAdd: (t: NewTaskInput) => void;
   onUpdate: (id: string, updates: Partial<Task>) => void;
   editingTask: Task | null;
   setEditingTask: (t: Task | null) => void;
@@ -25,6 +25,9 @@ const INITIAL_TASK_FORM: TaskFormData = {
   xp: 50,
   deadlineDate: '',
   deadlineTime: '',
+  isBackdated: false,
+  createdAtDate: '',
+  completedAtDate: '',
 };
 
 export function useTaskManagement({
@@ -120,6 +123,9 @@ export function useTaskManagement({
       xp: 50,
       deadlineDate: '',
       deadlineTime: '',
+      isBackdated: false,
+      createdAtDate: '',
+      completedAtDate: '',
     });
     setShowForm(false);
     setEditingTask(null);
@@ -128,23 +134,31 @@ export function useTaskManagement({
   const handleSubmitTask = () => {
     if (!form.title.trim()) return;
     const deadline = form.deadlineDate ? `${form.deadlineDate}T${form.deadlineTime || '23:59'}:00` : null;
+    const isBackdated = form.isBackdated && !!form.createdAtDate;
+    const createdAt = isBackdated ? `${form.createdAtDate}T12:00:00.000Z` : undefined;
+    const completedAtDate = form.isBackdated ? form.completedAtDate : '';
+    const isCompleted = !!completedAtDate;
+    const completedDate = isCompleted ? `${completedAtDate}T12:00:00.000Z` : undefined;
+    const base = {
+      title: form.title.trim(),
+      categoryId: form.categoryId,
+      difficulty: form.difficulty,
+      priority: form.priority,
+      xp: form.xp,
+      deadline,
+      isBackdated,
+    };
     if (editingTask) {
-      onUpdate(editingTask.id, {
-        title: form.title.trim(),
-        categoryId: form.categoryId,
-        difficulty: form.difficulty,
-        priority: form.priority,
-        xp: form.xp,
-        deadline,
-      });
+      const updates: Partial<Task> = { ...base, ...(isBackdated ? { createdAt } : {}) };
+      if (isBackdated) {
+        updates.completed = isCompleted;
+        updates.completedDate = completedDate ?? null;
+      }
+      onUpdate(editingTask.id, updates);
     } else {
       onAdd({
-        title: form.title.trim(),
-        categoryId: form.categoryId,
-        difficulty: form.difficulty,
-        priority: form.priority,
-        xp: form.xp,
-        deadline,
+        ...base,
+        ...(isBackdated ? { createdAt, completed: isCompleted, completedDate: completedDate ?? null } : {}),
       });
     }
     resetForm();
@@ -160,6 +174,9 @@ export function useTaskManagement({
       xp: t.xp,
       deadlineDate: t.deadline ? t.deadline.slice(0, 10) : '',
       deadlineTime: t.deadline ? t.deadline.slice(11, 16) : '',
+      isBackdated: !!t.isBackdated,
+      createdAtDate: t.isBackdated && t.createdAt ? t.createdAt.slice(0, 10) : '',
+      completedAtDate: t.isBackdated && t.completedDate ? t.completedDate.slice(0, 10) : '',
     });
     setShowForm(true);
   };

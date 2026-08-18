@@ -10,6 +10,9 @@ export interface TaskFormData {
   xp: number;
   deadlineDate: string;
   deadlineTime: string;
+  isBackdated: boolean;
+  createdAtDate: string;
+  completedAtDate: string;
 }
 
 interface Props {
@@ -97,6 +100,63 @@ export const TaskFormPanel: React.FC<Props> = ({
           onChange={e => onChangeForm(f => ({ ...f, deadlineTime: e.target.value }))}
         />
       </div>
+
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          cursor: 'pointer',
+          marginBottom: '16px',
+          fontSize: '14px',
+          fontWeight: 700,
+          letterSpacing: '0.8px',
+          textTransform: 'uppercase',
+          color: 'var(--text-soft)',
+        }}
+      >
+        <input
+          className="checkbox-spacex"
+          type="checkbox"
+          checked={form.isBackdated}
+          onChange={e => onChangeForm(f => ({ ...f, isBackdated: e.target.checked, createdAtDate: e.target.checked ? f.createdAtDate : '', completedAtDate: e.target.checked ? f.completedAtDate : '' }))}
+        />
+        ⏪ Задача из прошлого
+      </label>
+
+      {form.isBackdated && (
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          <div style={{ flex: 1, minWidth: '200px', maxWidth: '260px' }}>
+            <label
+              className="micro-cap"
+              style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
+            >
+              Дата создания
+            </label>
+            <input
+              className="input-spacex"
+              type="date"
+              value={form.createdAtDate}
+              onChange={e => onChangeForm(f => ({ ...f, createdAtDate: e.target.value }))}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: '200px', maxWidth: '260px' }}>
+            <label
+              className="micro-cap"
+              style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
+            >
+              Дата выполнения
+            </label>
+            <input
+              className="input-spacex"
+              type="date"
+              value={form.completedAtDate}
+              title="Необязательно — оставьте пустым, если задача ещё не выполнена"
+              onChange={e => onChangeForm(f => ({ ...f, completedAtDate: e.target.value }))}
+            />
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '12px' }}>
         <button className="btn-ghost btn-ghost-sm" onClick={onSubmit}>

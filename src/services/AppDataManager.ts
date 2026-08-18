@@ -1,4 +1,4 @@
-import type { Task, Category, AppData, PomodoroSession, Workout, Book } from '../types';
+import type { Task, Category, AppData, PomodoroSession, Workout, Book, NewTaskInput } from '../types';
 import { StorageService } from './StorageService';
 import { BookModel } from '../models/BookModel';
 import { generateId } from '../utils/id';
@@ -13,14 +13,14 @@ export class AppDataManager {
   }
 
   // Tasks
-  public static addTask(data: AppData, task: Omit<Task, 'id' | 'completed' | 'completedDate' | 'pomodoroCount' | 'createdAt'>): AppData {
+  public static addTask(data: AppData, task: NewTaskInput): AppData {
     const newTask: Task = {
       ...task,
       id: generateId(),
-      completed: false,
-      completedDate: null,
+      completed: task.completed ?? false,
+      completedDate: task.completedDate ?? null,
       pomodoroCount: 0,
-      createdAt: new Date().toISOString(),
+      createdAt: task.createdAt || new Date().toISOString(),
       deadline: task.deadline || null
     };
     return { ...data, tasks: [...data.tasks, newTask] };
